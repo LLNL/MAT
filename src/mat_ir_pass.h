@@ -14,14 +14,14 @@ using namespace std;
 #define MAT_IR_PASS_INSERT_AFTER  (1)
 #define MAT_IR_PASS_INSERT_BEFORE (0)
 
-class MAT: public FunctionPass
+class MATFunc: public FunctionPass
 {
  public:
   static char ID;
 
- MAT()
+ MATFunc()
    : FunctionPass(ID) {}
-  ~MAT(){}
+  ~MATFunc(){}
 
   virtual bool doInitialization(Module &M);
   virtual bool runOnFunction(Function &F);
@@ -42,20 +42,25 @@ class MAT: public FunctionPass
   int handle_function(Function &F);
   int handle_basicblock(Function &F, BasicBlock &BB);
   int handle_instruction(Function &F, BasicBlock &BB, Instruction &I);
-
   int instrument_load_store(Function &F, BasicBlock &BB, Instruction &I);
+  /* Loop Handlers */
+  
+  
 };
 
 
-class LPCountPass: public LoopPass
+class MATLoop: public LoopPass
 {
  public:
   static char ID;
- LPCountPass(): LoopPass(ID){}
-  ~LPCountPass(){}
+ MATLoop(): LoopPass(ID){}
+  ~MATLoop(){}
 
   virtual bool runOnLoop(Loop *L, LPPassManager &LPM);
   virtual void getAnalysisUsage(AnalysisUsage &AU) const;
+
+ private:
+  int handle_loop(Loop *L, LPPassManager &LPM);
 };
 
 

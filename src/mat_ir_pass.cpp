@@ -33,7 +33,7 @@
 #define MAT_VERSION (1)
 
 
-int MAT::insert_func(Instruction *I, BasicBlock *BB, int offset, int control, Value* ptr, Value* size)
+int MATFunc::insert_func(Instruction *I, BasicBlock *BB, int offset, int control, Value* ptr, Value* size)
 {
   vector<Value*> arg_vec;
   IRBuilder<> builder(I);
@@ -48,7 +48,7 @@ int MAT::insert_func(Instruction *I, BasicBlock *BB, int offset, int control, Va
   return 1;
 }
 
-int MAT::instrument_init_and_finalize(Function &F)
+int MATFunc::instrument_init_and_finalize(Function &F)
 {
   int modified_counter = 0;
   int is_hook_enabled = 0;
@@ -68,7 +68,7 @@ int MAT::instrument_init_and_finalize(Function &F)
   return modified_counter;
 }
 
-int MAT::instrument_load_store(Function &F, BasicBlock &BB, Instruction &I)
+int MATFunc::instrument_load_store(Function &F, BasicBlock &BB, Instruction &I)
 {
   int modified_counter = 0;
   if (StoreInst *SI = dyn_cast<StoreInst>(&I)) {
@@ -86,26 +86,26 @@ int MAT::instrument_load_store(Function &F, BasicBlock &BB, Instruction &I)
 }
 			       
 
-int MAT::handle_function(Function &F)
+int MATFunc::handle_function(Function &F)
 {
   int modified_counter = 0;
   modified_counter += instrument_init_and_finalize(F);
   return modified_counter;
 }
 
-int MAT::handle_basicblock(Function &F, BasicBlock &BB)
+int MATFunc::handle_basicblock(Function &F, BasicBlock &BB)
 {
   return 0;
 }
 
-int MAT::handle_instruction(Function &F, BasicBlock &BB, Instruction &I)
+int MATFunc::handle_instruction(Function &F, BasicBlock &BB, Instruction &I)
 {
   int modified_counter = 0;
   modified_counter += instrument_load_store(F, BB, I); /* */
   return modified_counter;
 }
 
-void MAT::init_instrumented_functions(Module &M)
+void MATFunc::init_instrumented_functions(Module &M)
 {
 
   LLVMContext &ctx = M.getContext();
@@ -118,7 +118,7 @@ void MAT::init_instrumented_functions(Module &M)
   return;
 }
 
-bool MAT::doInitialization(Module &M)
+bool MATFunc::doInitialization(Module &M)
 {
   MAT_M   = &M;
   MAT_CTX = &(M.getContext());
@@ -129,7 +129,7 @@ bool MAT::doInitialization(Module &M)
   return true;
 }
 
-bool MAT::runOnFunction(Function &F)
+bool MATFunc::runOnFunction(Function &F)
 {
   int modified_counter = 0;
   modified_counter += handle_function(F);
@@ -139,21 +139,39 @@ bool MAT::runOnFunction(Function &F)
       modified_counter += handle_instruction(F, BB, I);
     }
   }
-  MAT_DBG("test");
   return modified_counter > 0;
 }
 
 
-void MAT::getAnalysisUsage(AnalysisUsage &AU) const
+void MATFunc::getAnalysisUsage(AnalysisUsage &AU) const
 {
 }
 
-char MAT::ID = 0;
+
+int MATLoop::handle_loop(Loop *L, LPPassManager &LPM)
+{
+
+}
+
+bool MATLoop::runOnLoop(Loop *L, LPPassManager &LPM)
+{
+  int modified_counter = 0;
+  modified_counter = handle_loop(L, LPM);
+  return modified_counter > 0;
+}
+
+void MATLoop::getAnalysisUsage(AnalysisUsage &AU) const
+{}
+
+
+char MATFunc::ID = 0;
+char MATLoop::ID = 1;
 //static RegisterPass<DASample> A("dasample", "dasample", false, false);
 
 static void registerMAT(const PassManagerBuilder &, legacy::PassManagerBase &PM)
 {
-  PM.add(new MAT);
+  PM.add(new MATFunc);
+  PM.add(new MATLoop);
 }
 
 static RegisterStandardPasses RegisterMAT(PassManagerBuilder::EP_EarlyAsPossible, registerMAT);

@@ -5,12 +5,9 @@ lib_LTLIBRARIES = libmat.la libmatir.la
 
 mat_SOURCES =  \
 		mat.cpp \
-		mat_ir_pass.cpp \
 		mat_io.cpp \
 		mat_config.cpp \
 		mat_util.cpp
-
-
 
 libmat_la_SOURCES  = $(mat_SOURCES)
 libmat_la_LIBADD   =

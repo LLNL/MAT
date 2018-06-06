@@ -7,8 +7,8 @@
 
 
 #define MUTIL_FUNC_(prefix, func)   prefix ## _ ## func
-#define MUTIL_FUNC(func)   MUTIL_FUNC_(reomp_util, func)
-#define MUTIL_PREFIX "PAC"
+#define MUTIL_FUNC(func)   MUTIL_FUNC_(mat_util, func)
+#define MUTIL_PREFIX "MAT"
 //#define MUTIL_MACRO_(prefix, name)   prefix ## _ ## name
 //#define MUTIL_MACRO(name) MUTIL_MACRO_(MUTIL_PREFIX, name)
 
@@ -25,15 +25,15 @@ extern char mutil_hostname[256];
 #define MUTIL_DBG MAT_DBG
 #define MAT_DBG(fmt, ...)		\
   do { \
-  fprintf(stderr, "PACFS:DBG: " fmt " (%s:%d)\n", \
-	  ## __VA_ARGS__, __FILE__, __LINE__);	      \
+  fprintf(stderr, MUTIL_PREFIX ":DBG: " fmt " (%s:%d)\n", \
+	   ## __VA_ARGS__, __FILE__, __LINE__);		  \
   } while(0)
 
 
 #define MUTIL_ERR MAT_ERR
 #define MAT_ERR(fmt, ...)		\
   do { \
-  fprintf(stderr, "PACFS:ERR: " fmt " (%s:%d)\n", \
+  fprintf(stderr, MUTIL_PREFIX ":ERR: " fmt " (%s:%d)\n", \
 	  ## __VA_ARGS__, __FILE__, __LINE__);	      \
   exit(1); \
   } while(0)
