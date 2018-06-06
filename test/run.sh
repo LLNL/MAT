@@ -1,4 +1,4 @@
 #!/bin/sh
 
 
-./mat_stream
+./mat_test_stream

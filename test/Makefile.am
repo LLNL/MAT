@@ -6,12 +6,18 @@ SUBDIRS=../src
 #AM_LDFLAGS = -L../src/.libs/
 
 noinst_PROGRAMS = \
-	mat_test_stream
+	mat_test_stream \
+	mat_test_stream.ll
 
 mat_test_stream_SOURCES  = mat_test_stream.cpp
-mat_test_stream_CPPFLAGS = -Xclang -load -Xclang ../src/.libs/libmatir.so
-mat_test_stream_CXXFLAGS =  -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11
+mat_test_stream_CPPFLAGS = -Xclang -load -Xclang ../src/.libs/libmatir.so 
+mat_test_stream_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11
 mat_test_stream_LDFLAGS  = -L./ `llvm-config --ldflags` -L../src/.libs/ -lmat
+
+mat_test_stream_ll_SOURCES  = mat_test_stream.cpp
+mat_test_stream_ll_CPPFLAGS = -Xclang -load -Xclang ../src/.libs/libmatir.so -emit-llvm -S
+mat_test_stream_ll_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11
+mat_test_stream_ll_LDFLAGS  = -L./ `llvm-config --ldflags` -L../src/.libs/ -lmat -emit-llvm -S
 
 
 .PHONY: clean_core
