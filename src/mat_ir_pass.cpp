@@ -139,6 +139,7 @@ bool MAT::runOnFunction(Function &F)
       modified_counter += handle_instruction(F, BB, I);
     }
   }
+  MAT_DBG("test");
   return modified_counter > 0;
 }
 
