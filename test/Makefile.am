@@ -1,6 +1,7 @@
 SUBDIRS=../src
 
-AM_CFLAGS = -g -rdynamic
+AM_CXXFLAGS = -g -rdynamic -fopenmp
+AM_CFLAGS = -g -rdynamic -fopenmp
 AM_CPPFLAGS = -I../src/
 AM_LDFLAGS = -L../src/.libs/
 

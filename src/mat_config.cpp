@@ -41,26 +41,8 @@ void mat_config_init(int *argc, char ***argv)
   char* env;
   int env_int;
 
-  if (NULL != (env = getenv(MAT_ENV_NAME_MOUNT_DIR))) {
-    mat_config.mount_dir = env;
-  }
-
-  if (NULL != (env = getenv(MAT_ENV_NAME_CACHE_DIR))) {
-    mat_config.cache_dir = env;
-  }
-
-  if (NULL != (env = getenv(MAT_ENV_NAME_CHUNK_SIZE))) {
-    mat_config.chunk_size = (size_t)atoi(env);
-  }
-
-  if (NULL != (env = getenv(MAT_ENV_NAME_PARTITION_METHOD))) {
-    mat_config.partition_method = atoi(env);
-  }
-
-  if (mat_config.partition_method == MAT_ENV_VAL_PARTITION_METHOD_DEFAULT) {
-    if (NULL != (env = getenv(MAT_ENV_NAME_PARTITION_SIZE))) {
-      mat_config.partition_size = atoi(env);
-    }
+  if (NULL != (env = getenv(MAT_ENV_NAME_MODE))) {
+    mat_config.mode = atoi(env);
   }
 
   return;
