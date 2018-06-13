@@ -13,12 +13,19 @@ using namespace std;
 #define MAT_ENV_NAME_MODE_ENABLE  (1)
 #define MAT_ENV_NAME_MODE_DISABLE (0)
 
+
+#define MAT_ENV_NAME_DIR    "MAT_DIR"
+#define MAT_ENV_DIR_DEFAULT "."
+
+
 typedef struct {
   int    mode = 1;
+  char  *dir = NULL;
 } mat_config_t;
 
 extern mat_config_t mat_config;
 
-void mat_config_init(int *argc, char ***argv);
+
+void mat_config_init();
 
 #endif

@@ -17,6 +17,10 @@ extern "C" {
 #define MAT_CONTROL_STR xstr(MAT_CONTROL)
 void MAT_CONTROL(int control, int file_id, int loc_id, int type, void *addr, size_t size);
 
+#define MAT_TRACE_FILE_DIR    "."
+#define MAT_TRACE_DIR_FORMAT    "%s/mat-%u"  
+#define MAT_TRACE_FILE_FORMAT "trace-%d.mat"
+
 #define MAT_INIT (0)
 #define MAT_FIN  (1)
 

@@ -36,13 +36,19 @@ using namespace std;
 
 mat_config_t mat_config;
 
-void mat_config_init(int *argc, char ***argv)
+void mat_config_init()
 {
   char* env;
   int env_int;
 
   if (NULL != (env = getenv(MAT_ENV_NAME_MODE))) {
     mat_config.mode = atoi(env);
+  }
+
+  if (NULL != (env = getenv(MAT_ENV_NAME_DIR))) {
+    mat_config.dir = env;
+  } else {
+    mat_config.dir = MAT_ENV_DIR_DEFAULT;
   }
 
   return;

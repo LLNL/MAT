@@ -50,6 +50,8 @@ AC_PROG_LIBTOOL
 
 
 #### Checks for libraries.
+#####zlib
+
 AC_ARG_WITH([zlib-static],
             [AS_HELP_STRING([--with-zlib-static],
               [path to installation directory for libz])],
@@ -68,6 +70,25 @@ else
    AC_SUBST([libz_a_LIB], [$libz_DIR/lib/libz.a])
 fi
 
+##### GOTCHA
+AC_ARG_WITH([gotcha],
+            [AS_HELP_STRING([--with-gotcha],
+              [path to installation directory for GOTCHA])],
+            [libgotcha_DIR=$withval],
+            [libgotcha_DIR=""])
+
+check_gotcha="yes"
+if test "$libgotcha_DIR" = ""; then
+   AC_CHECK_LIB([gotcha], [gotcha_wrap], [], [check_gotcha="no"])
+if test "$check_gotcha" = "no"; then
+   AC_MSG_ERROR([This package needs GOTCHA: --with-gotcha=<installation directory> ])
+fi		    
+else
+   AC_SUBST([libgotcha_INCLUDE], [$libgotcha_DIR/include/])
+   AC_SUBST([libgotcha_LDFLAGS], [$libgotcha_DIR/lib64/])
+fi
+
+
 #AC_CHECK_LIB([mpi], [MPI_Init])
 mpi_version3="yes"
 if test "$enable_cdc" = yes; then
@@ -84,6 +105,10 @@ fi
 
 if test "$libz_DIR" = :; then
    AC_CHECK_HEADERS([zlib.h])
+fi
+
+if test "$libgotcha_DIR" = :; then
+   AC_CHECK_HEADERS([gotcha/gotcha.h])
 fi
 
 #### Checks for typedefs, structures, and compiler characteristics.

@@ -1,16 +1,23 @@
 SUBDIRS=../src
 
-#AM_CXXFLAGS = -g -rdynamic -fopenmp
-#AM_CFLAGS = -g -rdynamic -fopenmp
-#AM_CPPFLAGS = -I../src/
-#AM_LDFLAGS = -L../src/.libs/
+AM_CXXFLAGS = -g -rdynamic -fopenmp -I../src/
+AM_CFLAGS = -g -rdynamic -fopenmp -I../src/
+AM_CPPFLAGS = -I$(libgotcha_INCLUDE) -I../src/
+AM_LDFLAGS = -L$(libgotcha_LDFLAGS) -L../src/.libs/
+AM_LIBADD  = -lgotcha
 
 noinst_PROGRAMS = \
+	mat_test_simple \
 	mat_test_simple_mat \
 	mat_test_simple.ll \
 	mat_test_stream \
 	mat_test_stream_mat \
 	mat_test_stream.ll
+
+mat_test_simple_SOURCES  = mat_test_simple.cpp
+mat_test_simple_CPPFLAGS =
+mat_test_simple_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11
+mat_test_simple_LDFLAGS  = -L./ `llvm-config --ldflags` -W
 
 mat_test_simple_mat_SOURCES  = mat_test_simple.cpp
 mat_test_simple_mat_CPPFLAGS = -Xclang -load -Xclang ../src/.libs/libmatir.so 
@@ -46,5 +53,9 @@ clean_core:
 .PHONY: clean_test
 clean_test:
 	-rm $(noinst_PROGRAMS) *.o
+
+.PHONY: clean_mat
+clean_mat:
+	-rm -rf ./mat_trace/mat-*
 
 

@@ -5,16 +5,18 @@ lib_LTLIBRARIES = libmat.la libmatir.la
 
 mat_SOURCES =  \
 		mat.cpp \
+		mat_gotcha.cpp \
+		mat_alloc_tree.cpp \
 		mat_io.cpp \
 		mat_config.cpp \
 		mat_util.cpp
 
 libmat_la_SOURCES  = $(mat_SOURCES)
-libmat_la_LIBADD   =
-libmat_la_CXXFLAGS = -lstdc++ `llvm-config --cxxflags`
-libmat_la_CPPFLAGS = `llvm-config --cppflags`
-libmat_la_LDFLAGS  = -version-info @LIB_CURRENT@:@LIB_REVISION@:@LIB_AGE@ `llvm-config --ldflags`
-libmat_la_LDLIBS   = `llvm-config --ldlibs`
+libmat_la_LIBADD   = -lgotcha
+libmat_la_CXXFLAGS = -lstdc++ `llvm-config --cxxflags` -I$(libgotcha_INCLUDE)
+libmat_la_CPPFLAGS = `llvm-config --cppflags` -I$(libgotcha_INCLUDE)
+libmat_la_LDFLAGS  = -version-info @LIB_CURRENT@:@LIB_REVISION@:@LIB_AGE@ `llvm-config --ldflags` -L$(libgotcha_LDFLAGS) 
+libmat_la_LDLIBS   = `llvm-config --ldlibs` 
 
 
 matir_SOURCES =  \
