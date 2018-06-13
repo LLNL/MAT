@@ -8,9 +8,11 @@ AM_LIBADD  = -lgotcha
 
 noinst_PROGRAMS = \
 	mat_test_simple \
+	mat_test_simple_mat_pin \
 	mat_test_simple_mat \
 	mat_test_simple.ll \
 	mat_test_stream \
+	mat_test_stream_mat_pin \
 	mat_test_stream_mat \
 	mat_test_stream.ll
 
@@ -19,9 +21,14 @@ mat_test_simple_CPPFLAGS =
 mat_test_simple_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11
 mat_test_simple_LDFLAGS  = -L./ `llvm-config --ldflags` -W
 
+mat_test_simple_mat_pin_SOURCES  = mat_test_simple.cpp
+mat_test_simple_mat_pin_CPPFLAGS =
+mat_test_simple_mat_pin_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11 -DUSE_MAT
+mat_test_simple_mat_pin_LDFLAGS  = -L./ `llvm-config --ldflags` -W
+
 mat_test_simple_mat_SOURCES  = mat_test_simple.cpp
 mat_test_simple_mat_CPPFLAGS = -Xclang -load -Xclang ../src/.libs/libmatir.so 
-mat_test_simple_mat_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11
+mat_test_simple_mat_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11 -DUSE_MAT_LLVM -I../src/
 mat_test_simple_mat_LDFLAGS  = -L./ `llvm-config --ldflags` -L../src/.libs/ -lmat -W
 
 mat_test_simple_ll_SOURCES  = mat_test_simple.cpp
@@ -29,19 +36,28 @@ mat_test_simple_ll_CPPFLAGS = -Xclang -load -Xclang ../src/.libs/libmatir.so -em
 mat_test_simple_ll_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11
 mat_test_simple_ll_LDFLAGS  = -L./ `llvm-config --ldflags` -L../src/.libs/ -lmat  -Wno-error=unused-command-line-argument -emit-llvm -S
 
+
+STREAM_N=100000
+STREAM_NTIMES=10
+
 mat_test_stream_SOURCES  = mat_test_stream.cpp
-mat_test_stream_CPPFLAGS =
-mat_test_stream_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11
+mat_test_stream_CPPFLAGS = 
+mat_test_stream_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11 #-DSTREAM_ARRAY_SIZE=$(STREAM_N) -DNTIMES=$(STREAM_NTIMES)
 mat_test_stream_LDFLAGS  = -L./ `llvm-config --ldflags`
+
+mat_test_stream_mat_pin_SOURCES  = mat_test_stream.cpp
+mat_test_stream_mat_pin_CPPFLAGS =
+mat_test_stream_mat_pin_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11 -DUSE_MAT  -DSTREAM_ARRAY_SIZE=$(STREAM_N) -DNTIMES=$(STREAM_NTIMES)
+mat_test_stream_mat_pin_LDFLAGS  = -L./ `llvm-config --ldflags`
 
 mat_test_stream_mat_SOURCES  = mat_test_stream.cpp
 mat_test_stream_mat_CPPFLAGS = -Xclang -load -Xclang ../src/.libs/libmatir.so 
-mat_test_stream_mat_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11
+mat_test_stream_mat_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11 -I../src/ -DUSE_MAT_LLVM -DSTREAM_ARRAY_SIZE=$(STREAM_N) -DNTIMES=$(STREAM_NTIMES)
 mat_test_stream_mat_LDFLAGS  = -L./ `llvm-config --ldflags` -L../src/.libs/ -lmat
 
 mat_test_stream_ll_SOURCES  = mat_test_stream.cpp
 mat_test_stream_ll_CPPFLAGS = -Xclang -load -Xclang ../src/.libs/libmatir.so -emit-llvm -S
-mat_test_stream_ll_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11
+mat_test_stream_ll_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11  -DSTREAM_ARRAY_SIZE=$(STREAM_N) -DNTIMES=$(STREAM_NTIMES)
 mat_test_stream_ll_LDFLAGS  = -L./ `llvm-config --ldflags` -L../src/.libs/ -lmat -emit-llvm -S -Wno-error=unused-command-line-argument
 
 
@@ -56,6 +72,7 @@ clean_test:
 
 .PHONY: clean_mat
 clean_mat:
-	-rm -rf ./mat_trace/mat-*
+	-rm -rf ./mat_llvm_trace/*
+	-rm -rf ./mat_pin_trace/*
 
 

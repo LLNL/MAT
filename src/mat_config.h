@@ -19,7 +19,7 @@ using namespace std;
 
 
 typedef struct {
-  int    mode = 1;
+  int    mode = 0;
   char  *dir = NULL;
 } mat_config_t;
 

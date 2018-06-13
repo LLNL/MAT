@@ -77,28 +77,23 @@ static void handle_trace(int control, int file_id, int loc_id, int type, void *a
 {
   int tid;
   FILE *fd;
-  void* start_addr;
-  size_t alloc_size;
+  void* start_addr  = 0;
+  size_t alloc_size = 0;
+  char data[128];
     
   tid = get_tid();
   fd = get_fd(tid);
-  //  fwrite(&file_id, sizeof(int), 1, fd);
-  //  fwrite(&loc_id,  sizeof(int), 1, fd);
-  //  fwrite(&type,    sizeof(int), 1 , fd);
-  //  fwrite(&addr,    sizeof(void*), 1, fd);
-  //  fwrite(&size,    sizeof(char), 1, fd);
-
   if (0 == mat_alloc_tree_lookup(addr, &start_addr, &alloc_size)) {
-    MAT_DBG("Alloc: %p %lu", start_addr, alloc_size);
-  }
-  
-  switch(type) {
-  case MAT_TRACE_LOAD:
-    //    MAT_DBG("LOAD: %d %d %p %lu", file_id, loc_id, addr, size);
-    break;
-  case MAT_TRACE_STORE:
-    //    MAT_DBG("STOR: %d %d %p %lu", file_id, loc_id, addr, size);
-    break;
+    fwrite(&file_id, sizeof(int), 1, fd);
+    fwrite(&loc_id,  sizeof(int), 1, fd);
+    fwrite(&type,    sizeof(int), 1 , fd);
+    fwrite(&addr,    sizeof(void*), 1, fd);
+    fwrite(&size,    sizeof(char), 1, fd);
+    fwrite(&tid,     sizeof(int), 1, fd);
+    fwrite(&start_addr, sizeof(void*), 1 , fd);
+    fwrite(&alloc_size, sizeof(size_t), 1 , fd);
+  //   MAT_PRT("%d %d %d %lu %d %d %lu %lu",
+  //   	  file_id, loc_id, type, addr, size, tid, start_addr, alloc_size);
   }
   return;
 }
@@ -125,27 +120,44 @@ static void handle_loop(int control, int file_id, int loc_id, int type, void *ad
   }
 }
 
+void mat_enable()
+{
+  mat_config.mode = MAT_ENV_NAME_MODE_ENABLE;
+  MAT_PRT("Enabled");
+}
+
+void mat_disable()
+{
+  mat_config.mode = MAT_ENV_NAME_MODE_DISABLE;
+  MAT_PRT("Disabled");
+}
+
 void MAT_CONTROL(int control, int file_id, int loc_id, int type, void *addr, size_t size)
 {
-  if (mat_config.mode == MAT_ENV_NAME_MODE_DISABLE) return;
-
   switch(control) {
   case MAT_INIT:
     init();
-    break;
+    return;
+  case MAT_FIN:
+    finalize();
+    //    MAT_TIMER(MAT_TIMER_PRINT, 0, NULL);
+    return;
+  }
+
+  if (mat_config.mode == MAT_ENV_NAME_MODE_DISABLE) return;
+
+
+  switch(control) {
   case MAT_TRACE:
     handle_trace(control, file_id, loc_id, type, addr, size);
     break;
   case MAT_LOOP:
     handle_loop(control, file_id, loc_id, type, addr, size);
     break;
-  case MAT_FIN:
-    finalize();
-    break;
   default:
     MAT_ERR("No such control: %d", control);
-
   }
+
   return;
 }
 

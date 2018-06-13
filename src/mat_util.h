@@ -60,6 +60,7 @@ extern char mutil_hostname[256];
 #define MUTIL_TIMER_START     (0)
 #define MUTIL_TIMER_STOP      (1)
 #define MUTIL_TIMER_GET_TIME  (2)
+#define MUTIL_TIMER_PRINT     (3)
 #ifdef ENABLE_TIMER
 #define MUTIL_TIMER(mode, timerIndex, time) \
   do { \
@@ -68,6 +69,12 @@ extern char mutil_hostname[256];
 #else
 #define MUTIL_TIMER(mode, timerIndex, time)
 #endif
+
+#define MAT_TIMER_START     (0)
+#define MAT_TIMER_STOP      (1)
+#define MAT_TIMER_GET_TIME  (2)
+#define MAT_TIMER_PRINT     (3)
+#define MAT_TIMER MUTIL_TIMER
 
 using namespace std;
 #ifdef __cplusplus

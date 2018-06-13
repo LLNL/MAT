@@ -51,6 +51,8 @@ void mat_config_init()
     mat_config.dir = MAT_ENV_DIR_DEFAULT;
   }
 
+  MAT_DBG("MAT_DIR: %s", mat_config.dir);
+
   return;
 }
 

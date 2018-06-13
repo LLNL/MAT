@@ -387,19 +387,16 @@ void MUTIL_FUNC(timer)(int mode, int timerIndex, double *time)
     }
     if (tcs->start != 0) {
       MUTIL_ERR("Double timer start: Timer is still running: timer index: %d", timerIndex);
-      exit(1);
     }
     tcs->start = MUTIL_FUNC(get_time)();
     break;
   case MUTIL_TIMER_STOP:
     if (timer_umap.find(timerIndex) == timer_umap.end()) {
       MUTIL_ERR("No such timer index");
-      exit(1);
     }
     tcs = timer_umap[timerIndex];
     if (tcs->start == 0) {
       MUTIL_ERR("Timer has not started yet");
-      exit(1);
     }
     tcs->sum += MUTIL_FUNC(get_time)() - tcs->start;
     tcs->start = 0;
@@ -407,18 +404,25 @@ void MUTIL_FUNC(timer)(int mode, int timerIndex, double *time)
   case MUTIL_TIMER_GET_TIME:
     if (timer_umap.find(timerIndex) == timer_umap.end()) {
       MUTIL_ERR("No such timer index: %d", timerIndex);
-      exit(1);
     }
     tcs = timer_umap[timerIndex];
     if (tcs->start != 0) {
       MUTIL_ERR("Timer is still running: timer index: %d", timerIndex);
-      exit(1);
     }
     if (time == NULL) {
       MUTIL_ERR("Time variable is NUL");
-      exit(1);
     }
     *time = tcs->sum;
+    break;
+  case MUTIL_TIMER_PRINT:
+    if (timer_umap.find(timerIndex) == timer_umap.end()) {
+      MUTIL_ERR("No such timer index: %d", timerIndex);
+    }
+    tcs = timer_umap[timerIndex];
+    if (tcs->start != 0) {
+      MUTIL_ERR("Timer is still running: timer index: %d", timerIndex);
+    }
+    MUTIL_PRT("### ID=%d  Time=%f ###", tcs->sum);
     break;
   }
   return;

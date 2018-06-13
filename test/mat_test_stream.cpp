@@ -69,6 +69,11 @@
 #define BEGIN(fn)  raise(SIGUSR1);
 #define END(fn)    raise(SIGUSR2);
 
+#elif USE_MAT_LLVM
+#include <mat.h>
+#define BEGIN(fn)  mat_enable();
+#define END(fn)    mat_disable();
+
 #elif USE_CALIPER
 #define BEGIN(fn)  CALI_MARK_BEGIN(fn);
 #define END(fn)    CALI_MARK_END(fn);
@@ -123,8 +128,8 @@
  *          per array.
  */
 #ifndef STREAM_ARRAY_SIZE
-#   define STREAM_ARRAY_SIZE	10000000
-//#   define STREAM_ARRAY_SIZE	1000
+//#   define STREAM_ARRAY_SIZE	10000000
+#   define STREAM_ARRAY_SIZE	1000
 #endif
 
 /*  2) STREAM runs each kernel "NTIMES" times and reports the *best* result

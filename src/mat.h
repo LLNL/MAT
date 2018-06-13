@@ -38,6 +38,9 @@ void MAT_CONTROL(int control, int file_id, int loc_id, int type, void *addr, siz
 
 #define MAT_DEBUG_PRINT (90)
 
+void mat_enable();
+void mat_disable();
+
 #ifdef __cplusplus
 }
 #endif
