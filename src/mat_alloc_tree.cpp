@@ -25,20 +25,24 @@ int mat_alloc_tree_lookup(void* addr, void** start_addr, size_t *alloc_size)
   void *saddr;
   size_t asize;
   map<void*, size_t>::iterator alloc_key = addr2size_map->lower_bound(addr);
-  if (alloc_key == addr2size_map->end()) return -1;
-  saddr  = alloc_key->first;
-  asize  = alloc_key->second;
-  if (addr == saddr) {
-    *start_addr = saddr;
-    *alloc_size = asize;
-    return 0;
+  if (alloc_key != addr2size_map->end()) {
+    saddr  = alloc_key->first;
+    asize  = alloc_key->second;
+    if (addr == saddr) {
+      *start_addr = saddr;
+      *alloc_size = asize;
+      return 0;
+    }
   }
+
+  if (alloc_key == addr2size_map->begin()) return -1;
 
   //  MAT_DBG("first: %p %p %p", saddr, addr, (char*)saddr + asize);
   
   alloc_key--;
   saddr  = alloc_key->first;
   asize  = alloc_key->second;
+
   //  MAT_DBG("second: %p %p %p", saddr, addr, (char*)saddr + asize);
   if (saddr <= addr && addr < (char*)saddr + asize) {
     *start_addr = saddr;

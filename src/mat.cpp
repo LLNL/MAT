@@ -92,9 +92,15 @@ static void handle_trace(int control, int file_id, int loc_id, int type, void *a
     fwrite(&tid,     sizeof(int), 1, fd);
     fwrite(&start_addr, sizeof(void*), 1 , fd);
     fwrite(&alloc_size, sizeof(size_t), 1 , fd);
-  //   MAT_PRT("%d %d %d %lu %d %d %lu %lu",
-  //   	  file_id, loc_id, type, addr, size, tid, start_addr, alloc_size);
+    // MAT_PRT("%d %lu %d %d %lu %lu",
+    // 	    type, addr, size, tid, start_addr, alloc_size);
+    MAT_PRT("%d %d %d %lu %d %d %lu %lu",
+	    file_id, loc_id, type, addr, size, tid, start_addr, alloc_size);
+  } else {
+    MAT_PRT("%d %d %d %lu %d %d",
+	    file_id, loc_id, type, addr, size, tid);
   }
+
   return;
 }
 

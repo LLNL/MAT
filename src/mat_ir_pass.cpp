@@ -284,7 +284,8 @@ int MATLoop::handle_loop(Loop *L, LPPassManager &LPM)
 
 bool MATLoop::runOnLoop(Loop *L, LPPassManager &LPM)
 {
-  return handle_loop(L, LPM) > 0;
+  //  return handle_loop(L, LPM) > 0;
+  return false;
 }
 
 void MATLoop::getAnalysisUsage(AnalysisUsage &AU) const
