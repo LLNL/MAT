@@ -1,10 +1,14 @@
 SUBDIRS=../src
+SRCDIR =../src
 
 AM_CXXFLAGS = -g -rdynamic -fopenmp -I../src/
 AM_CFLAGS = -g -rdynamic -fopenmp -I../src/
 AM_CPPFLAGS = -I$(libgotcha_INCLUDE) -I../src/
 AM_LDFLAGS = -L$(libgotcha_LDFLAGS) -L../src/.libs/
 AM_LIBADD  = -lgotcha
+
+
+
 
 noinst_PROGRAMS = \
 	mat_test_simple \
@@ -14,7 +18,8 @@ noinst_PROGRAMS = \
 	mat_test_stream \
 	mat_test_stream_mat_pin \
 	mat_test_stream_mat \
-	mat_test_stream.ll
+	mat_test_stream.ll \
+	mat_test_rd
 
 mat_test_simple_SOURCES  = mat_test_simple.cpp
 mat_test_simple_CPPFLAGS =
@@ -59,6 +64,16 @@ mat_test_stream_ll_SOURCES  = mat_test_stream.cpp
 mat_test_stream_ll_CPPFLAGS = -Xclang -load -Xclang ../src/.libs/libmatir.so -emit-llvm -S
 mat_test_stream_ll_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11  -DSTREAM_ARRAY_SIZE=$(STREAM_N) -DNTIMES=$(STREAM_NTIMES)
 mat_test_stream_ll_LDFLAGS  = -L./ `llvm-config --ldflags` -L../src/.libs/ -lmat -emit-llvm -S -Wno-error=unused-command-line-argument
+
+mat_SOURCES =  \
+		$(SRCDIR)/mat_reuse_distance.cpp \
+                $(SRCDIR)/mat_io.cpp \
+                $(SRCDIR)/mat_config.cpp \
+                $(SRCDIR)/mat_util.cpp
+mat_test_rd_SOURCES  = mat_test_rd.cpp $(mat_SOURCES)
+mat_test_rd_CPPFLAGS =
+mat_test_rd_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11  -I../src/
+mat_test_rd_LDFLAGS  = -L./ `llvm-config --ldflags` -W
 
 
 .PHONY: clean_core

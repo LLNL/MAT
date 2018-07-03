@@ -37,6 +37,7 @@ int mat_io_open(const char* path, int flags, ...)
     while (tries && fd < 0) {
       usleep(100 * 000);
       fd = open(path, flags, mode);
+
       tries--;
     }
     /* if we still don't have a valid file, consider it an error */
@@ -174,6 +175,43 @@ ssize_t mat_io_read(int fd, void* buf, size_t size)
 	MAT_ERR("read(%d, %p, %ld) errno=%d %s",
 		fd, (char*) buf + n, size - n, errno, strerror(errno));
 	exit(1);
+      }
+    }
+  }
+  return (ssize_t)n;
+}
+
+size_t mat_io_fread(void* buf, size_t size, size_t nmemb, FILE *stream)
+{
+  size_t n = 0;
+  int retries = MAT_IO_RETRIES;
+  while (n < nmemb) {
+    size_t rc = fread((char*) buf + size * n, size, nmemb - n, stream);
+    if (rc  > 0) {
+      n += rc;
+    } else if (rc == 0) {
+      /* EOF */
+      if (feof(stream)) return n;
+      if (ferror(stream)) {
+	MAT_ERR("fread failed: (%d, %p, $lu, $lu)",
+		stream, (char*) buf + size * n, size, nmemb - n);
+      }
+    } else { /* (rc < 0) */
+      /* got an error, check whether it was serious */
+      if (errno == EINTR || errno == EAGAIN) {
+	continue;
+      }
+      
+      /* something worth printing an error about */
+      retries--;
+      if (retries) {
+	/* print an error and try again */
+	MAT_DBG("fread retry: (%d, %p, $lu, $lu)",
+		stream, (char*) buf + size * n, size, nmemb - n);
+      } else {
+	/* too many failed retries, give up */
+	MAT_ERR("fread failed: (%d, %p, $lu, $lu)",
+		stream, (char*) buf + size * n, size, nmemb - n);
       }
     }
   }

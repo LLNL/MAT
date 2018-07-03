@@ -5,6 +5,7 @@ lib_LTLIBRARIES = libmat.la libmatir.la
 
 mat_SOURCES =  \
 		mat.cpp \
+		mat_reuse_distance.cpp \
 		mat_gotcha.cpp \
 		mat_alloc_tree.cpp \
 		mat_io.cpp \

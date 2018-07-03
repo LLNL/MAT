@@ -79,10 +79,18 @@ static void handle_trace(int control, int file_id, int loc_id, int type, void *a
   FILE *fd;
   void* start_addr  = 0;
   size_t alloc_size = 0;
-  char data[128];
+  mat_trace_t mtrace;
     
   tid = get_tid();
   fd = get_fd(tid);
+
+  mtrace.control  = control;
+  mtrace.mem.type = type;
+  mtrace.mem.addr = addr;
+  mtrace.mem.size = size;
+  fwrite(&mtrace, sizeof(mat_trace_t), 1, fd);
+  
+#if 0  
   if (0 == mat_alloc_tree_lookup(addr, &start_addr, &alloc_size)) {
     fwrite(&file_id, sizeof(int), 1, fd);
     fwrite(&loc_id,  sizeof(int), 1, fd);
@@ -90,8 +98,8 @@ static void handle_trace(int control, int file_id, int loc_id, int type, void *a
     fwrite(&addr,    sizeof(void*), 1, fd);
     fwrite(&size,    sizeof(char), 1, fd);
     fwrite(&tid,     sizeof(int), 1, fd);
-    fwrite(&start_addr, sizeof(void*), 1 , fd);
-    fwrite(&alloc_size, sizeof(size_t), 1 , fd);
+    //    fwrite(&start_addr, sizeof(void*), 1 , fd);
+    //    fwrite(&alloc_size, sizeof(size_t), 1 , fd);
     // MAT_PRT("%d %lu %d %d %lu %lu",
     // 	    type, addr, size, tid, start_addr, alloc_size);
     MAT_PRT("%d %d %d %lu %d %d %lu %lu",
@@ -100,6 +108,7 @@ static void handle_trace(int control, int file_id, int loc_id, int type, void *a
     MAT_PRT("%d %d %d %lu %d %d",
 	    file_id, loc_id, type, addr, size, tid);
   }
+#endif
 
   return;
 }

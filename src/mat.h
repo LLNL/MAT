@@ -38,6 +38,26 @@ void MAT_CONTROL(int control, int file_id, int loc_id, int type, void *addr, siz
 
 #define MAT_DEBUG_PRINT (90)
 
+typedef struct {
+  int type;
+  void *addr;
+  size_t size;
+} mat_trace_mem_t;
+
+typedef struct {
+  int type;
+  int file_id;
+  int loop_id;
+} mat_trace_loop_t;
+
+typedef struct {
+  int control;
+  union {
+    mat_trace_mem_t mem;
+    mat_trace_loop_t loop;    
+  };
+} mat_trace_t;
+
 void mat_enable();
 void mat_disable();
 
