@@ -84,10 +84,16 @@ static void handle_trace(int control, int file_id, int loc_id, int type, void *a
   tid = get_tid();
   fd = get_fd(tid);
 
+  mat_alloc_tree_lookup(addr, &start_addr, &alloc_size);
+
   mtrace.control  = control;
+  mtrace.id       = (file_id + 1) * (loc_id + 1);
+  mtrace.tid      = tid;
   mtrace.mem.type = type;
+  mtrace.mem.head_addr = start_addr;
   mtrace.mem.addr = addr;
   mtrace.mem.size = size;
+  mtrace.mem.alloc_size = alloc_size;
   fwrite(&mtrace, sizeof(mat_trace_t), 1, fd);
   
 #if 0  

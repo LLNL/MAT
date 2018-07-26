@@ -6,15 +6,15 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-
-#include <mat.h>
-#include <mat_util.h>
-#include <mat_io.h>
-
-
-static void mat_b2t_print_mem_trace(mat_trace_mem_t *mtrace)
+#include "mat.h"
+#include "mat_util.h"
+#include "mat_io.h"
+  
+static void mat_b2t_print_mem_trace(size_t id, int tid, mat_trace_mem_t *mtrace)
 {
-  printf("%d %lu %lu\n", mtrace->type, (unsigned long)mtrace->addr, mtrace->size);
+  int is_read;
+  is_read = (mtrace->type == MAT_TRACE_LOAD)? 1:0;
+  printf("%lu %lu %lu %d %lu %d\n", id, (unsigned long)mtrace->addr, (unsigned long)mtrace->head_addr, is_read, mtrace->alloc_size, tid);
 }
 
 static void mat_b2t_print(const char* trace_path)
@@ -33,7 +33,7 @@ static void mat_b2t_print(const char* trace_path)
     read_size += sizeof(mat_trace_t);
     switch(mtrace.control) {
     case MAT_TRACE:
-      mat_b2t_print_mem_trace(&mtrace.mem);
+      mat_b2t_print_mem_trace(mtrace.id, mtrace.tid, &mtrace.mem);
       break;
     case MAT_LOOP:
       break;

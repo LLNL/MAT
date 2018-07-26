@@ -40,6 +40,8 @@ void MAT_CONTROL(int control, int file_id, int loc_id, int type, void *addr, siz
 
 typedef struct {
   int type;
+  void *head_addr;
+  size_t alloc_size;
   void *addr;
   size_t size;
 } mat_trace_mem_t;
@@ -52,6 +54,8 @@ typedef struct {
 
 typedef struct {
   int control;
+  size_t id;
+  int tid;
   union {
     mat_trace_mem_t mem;
     mat_trace_loop_t loop;    
