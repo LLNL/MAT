@@ -142,7 +142,8 @@ void mat_rd_print(mat_rd_t* rd)
       m = mem_vec->at(i);
       bytes += m->trace.size;
     }
-    MAT_PRT("%d\t%lu\t%lu", dist, length, bytes);
+    MAT_PRT("%15d\t%20lu\t%19lu", dist, length, bytes);
+    //    MAT_PRT("%d, %lu, %lu", dist, length, bytes);
     total_access += length;
     total_bytes += bytes;
   }
