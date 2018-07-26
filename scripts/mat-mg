@@ -1,0 +1,430 @@
+#!/user/bin/env python3.6
+import matplotlib
+matplotlib.use('Agg')
+import numpy
+import pydot
+import sys
+import matplotlib.pyplot as plt
+from matplotlib import offsetbox
+import matplotlib.colors as colors
+
+class Trace_record(object):
+   TRECORD_TYPE_MEM_ACCESS = 1
+   def __init__(self, record_type):
+      self.record_type = record_type
+
+   def get_node_key(self):
+      return self.record_type
+
+   def get_node_label(self):
+      return str(self.record_type)
+
+class Trace_record_mem_access(Trace_record):
+   def __init__(self, ip, block_id, stride, access_address, object_size, is_read):
+#      super().__init__(Trace_record.TRECORD_TYPE_MEM_ACCESS)
+      super(Trace_record_mem_access, self).__init__(Trace_record.TRECORD_TYPE_MEM_ACCESS)
+      self.ip = ip
+      self.block_id = block_id
+      self.access_address = access_address
+      self.stride = stride
+      self.object_size = object_size
+      self.is_read = is_read
+
+   def get_node_key(self):
+      return (self.block_id, self.stride, self.object_size, self.is_read)
+#      return (self.block_id, self.stride, self.object_size)
+
+   def get_node_label(self):
+      bid = "BID=" + str(self.block_id)
+      srd = "SRD=" + str(self.stride)
+      osz = "OSZ=" + str(self.object_size)
+      ird = "ACC=" + ("R" if self.is_read == 1 else "W")
+      label = bid + "; " + srd + "; " + osz + "; " + ird      
+      return label
+
+
+class Trace_data_thread():
+   def __init__(self, tid):
+      self.tid = tid
+      self.previous_access_address = {}
+      self.record = []
+      self.record_length = 0
+
+   def add_record(self, ip, block_id, access_address, object_size, is_read):
+      stride = 16
+#      if self.previous_access_address.has_key(block_id):
+      if block_id in self.previous_access_address:
+         stride = access_address - self.previous_access_address[block_id]
+      self.previous_access_address[block_id] = access_address
+      self.record.append(Trace_record_mem_access(ip, block_id, stride, access_address, object_size, is_read))
+      self.record_length += 1
+
+   def get_record(self):
+      
+      return self.record
+
+   def get_record_length(self):
+      return self.record_length
+      
+
+
+class Trace_data():
+   def __init__(self, source_line_file):
+      self.init_variables()
+      self.init_source_lines(source_line_file)
+
+   def init_source_lines(self, source_line_file):
+      f = open(source_line_file)
+      for i in f.readlines():
+        tmp  = i.split()
+        line = tmp[1].split("/")[-1]
+        self.sourcelines[int(tmp[0])] = line.replace(":","-")
+
+   def init_variables(self):
+      self.tdata = {}
+      self.block_id_map = {} # Head address to ID
+      self.block_id_next = 0
+      self.sourcelines = {}
+      
+      
+   def add(self, tid, ip, access_address, is_read, block_address, object_size):
+      tdata_thread = None
+#      if not self.tdata.has_key(tid):
+      if tid not in self.tdata:
+         self.tdata[tid] = Trace_data_thread(tid)
+      tdata_thread = self.tdata[tid]
+
+#      if not self.block_id_map.has_key(block_address):
+      if block_address not in self.block_id_map:
+         self.block_id_map[block_address] = self.block_id_next
+         self.block_id_next += 1
+      block_id = self.block_id_map[block_address]
+      tdata_thread.add_record(ip, block_id, access_address, object_size, is_read)
+
+   def get_trace_ids(self):
+      return self.tdata.keys()
+
+   def get_trace_data(self, tid):
+      return self.tdata[tid].get_record()
+
+   def get_source_lines(self):
+      return self.sourcelines
+
+class Graph_data():
+   def __init__(self):
+      self.tree  = {}
+      self.edges = {}
+      self.graph = None
+      self.total = 0
+     
+class Graph():
+  
+   def __init__(self, trace_filename, access_loc_filename):
+      self.filename = trace_filename
+      self.graph_data = {}
+      self.trace_data   = self.prepare_input(access_loc_filename)
+      self.sourcelines = self.trace_data.get_source_lines()
+
+   def prepare_input(self, access_loc_filename):
+      tdata = Trace_data(access_loc_filename)
+      for line in open(self.filename, "r"):
+         vec = line.split()
+         ip = int(vec[0])
+         access_address = int(vec[1])
+         block_address  = int(vec[3])
+         is_read        = int(vec[4])
+         object_size    = int(vec[6])
+         tid            = int(vec[7])
+         tdata.add(tid, ip, access_address, is_read, block_address, object_size)
+      return tdata
+
+   def create_graph(self):
+      # get list of thread ids and iterate with the ids
+      for tid in self.trace_data.get_trace_ids():
+         self.create_graph_thread(tid)
+      return
+
+   def create_graph_thread(self, tid):
+     tdata_thread      = self.trace_data.get_trace_data(tid)
+     gdata             = Graph_data() 
+     self.graph_data[tid]   = gdata
+
+     gdata.total   = len(tdata_thread)
+     # Create pydot Graph and root node
+     gdata.graph      = pydot.Dot(graph_type='digraph')
+     previous_node   = pydot.Node("Root")
+
+     parent_key      = "Root"
+     grandparent_key = "RootParent"
+     gdata.tree = {parent_key: [previous_node, 1, 0]}
+
+     # Lookup sourcecode line
+     # ip: instruction pointers
+     # blockID: ID for memory allocation site id
+     # stride: stride size
+     # objectSize: size of blockID
+     # isRead: write(1), read(0)
+#     for ip, blockId, stride, objectSize, isRead  in zip( self.ips, self.blockIds, self.strides, self.objectSizes, self.isRead ):
+     for tdata_record  in tdata_thread:
+       ip = tdata_record.ip
+       blockId = tdata_record.block_id
+       stride = tdata_record.stride
+       objectSize = tdata_record.object_size
+       isRead = tdata_record.is_read
+
+       sourceline = " "
+       try:
+          sourceline = self.sourcelines[ip]
+       except:
+          pass
+       # key for each node in the graph is blockID, stride, size and sourceline 
+       key = tdata_record.get_node_key()
+       #key = (blockId, stride, objectSize) #, sourceline) 
+
+       # check if node already exists        
+       if key not in gdata.tree:
+         # create a new node and edge
+         node = pydot.Node(tdata_record.get_node_label())
+         #node = pydot.Node(str(blockId) + "_" + str(stride) + "_" + str(objectSize) ) #+ "_" + str(sourceline)) 
+         gdata.graph.add_node(node)
+         new_edge = pydot.Edge(previous_node, node)
+         gdata.graph.add_edge( new_edge )
+
+         # add new node with node counter 1 to dictionary          
+         gdata.tree[key]  = [node, 1, isRead] 
+
+         # add new edge with edge counter 1 to dictionary
+         gdata.edges[key] = {parent_key: {grandparent_key: [new_edge, 1] } , "Last": parent_key}
+
+         # remember keys for next iteration
+         grandparent_key    = parent_key
+         parent_key         = key
+         previous_node      = node
+
+       #key already exist in Graph, so increase counter
+       else:
+
+         # edge to parent does not exist
+         if (parent_key not in gdata.edges[key].keys()):
+            new_edge = pydot.Edge(previous_node, gdata.tree[key][0]) 
+            gdata.graph.add_edge( new_edge )
+            gdata.edges[key].update({parent_key: { grandparent_key: [new_edge, 0] }})
+            
+         # edge to grandparent does not exist in dictionary
+         if grandparent_key not in gdata.edges[key][parent_key].keys():
+            k = list(gdata.edges[key][parent_key].keys())[0]
+            new_edge = gdata.edges[key][parent_key][k][0]
+            gdata.edges[key][parent_key].update({grandparent_key: [new_edge,0]})
+
+         # increase edge_counter and update dictionaries 
+         edge_counter = gdata.edges[key][parent_key][grandparent_key][1]
+         gdata.edges[key][parent_key][grandparent_key][1] = edge_counter + 1
+         gdata.edges[key]["Last"] = parent_key
+         grandparent_key = gdata.edges[key]["Last"]
+
+         # increase node counter
+         previous_node, counter, isRead = gdata.tree[key]
+         parent_key = key
+         gdata.tree[parent_key] = [previous_node, counter + 1, isRead]
+
+     # set edge labels and mark most visited nodes (larger size)
+     for key in gdata.tree:
+        node, counter, isRead = gdata.tree[key]
+        node_label = node.get_name() + " - " + str(counter) 
+        node.set_label( node_label )
+        try:
+           for parent_key in gdata.edges[key].keys():
+              if parent_key != "Last":
+                 edge_label = ""
+                 for grandparent_key in gdata.edges[key][parent_key].keys():
+                    if grandparent_key != "Last":
+                       edge_counter = gdata.edges[key][parent_key][grandparent_key][1]
+                       edge_label =  edge_label + "\n" + str(edge_counter) + " " + str(grandparent_key)
+                 gdata.edges[key][parent_key][grandparent_key][0].set_label( edge_label )
+        except:
+           pass
+        
+        if counter > 0.001 * gdata.total:
+          node.set_fontsize(24)
+
+        #mark write accesses 
+        if not isRead:
+            node.set_style("filled, bold")          
+
+   def get_ngrams(self):
+
+     ngrams = {}
+     nodeList = []
+     isReadList = []
+
+     grandparent = "RootParent"
+     parent = "Root"
+
+     for i in range( 0, self.total ):
+
+       key = ( self.blockIds[i] , self.strides[i] , self.objectSizes[i] , self.sourcelines[self.ips[i]] )
+       for current in self.tree.keys():
+         
+         if key[0] == current[0] and key[1] == current[1]  and key[2] == current[2]  and current in self.edges_reduced.keys(): #and key[3] == current[3] 
+           if parent in self.edges_reduced[ current ] and parent != "Root":
+             if grandparent in self.edges_reduced[ current ][ parent ]:
+               if len( nodeList ) == 0:
+                 nodeList.append(( parent[0], parent[1], parent[2] )) #, parent[3] ))
+                 isReadList.append( self.isRead[i-1] )
+               nodeList.append( key )
+               isReadList.append( self.isRead[i] )
+
+               # if current node and it's parent node is already in nodeList, then one ngram is found
+               if len(nodeList) > 2 and key[0] == nodeList[1][0] and key[1] == nodeList[1][1] and key[2] == nodeList[1][2] and parent[0] == nodeList[0][0] and parent[1] == nodeList[0][1]:
+                 # create ngram_key  
+                 parent_tup = ( parent[0] , parent[1] , parent[2] ) #, parent[3] )  
+                 ngram_key = parent_tup + key
+                 # check if an ngram with this key already exists
+                 if ngram_key in ngrams:
+
+                   # Ngrams can start with the same blockIDs, strides. As such an ngram_key in the ngrams-dict can have mutliple ngrams
+                   append = True
+                   for counter in range(0, len( ngrams[ ngram_key ][ 0 ] )):
+                       # check if this specific ngram has already been seen: if yes increase counter by one. if not add a new list to the existing key in ngrams_dict 
+                      if nodeList == ngrams[ ngram_key ][ 0 ][ counter ]:
+                        append = False
+                        ngrams[ ngram_key ][ 2 ][ counter ] = ngrams[ ngram_key ][ 2 ][ counter ] + 1
+                        break
+                   # ngram_key already exist, but ngram itself does not, so extend the list  
+                   if append:
+                      #ngrams contains following list [nodeList (blockIDs, strides, objectSizes)] [number of occurences] [accesstypes] 
+                      ngrams[ ngram_key ][0].append( nodeList )
+                      ngrams[ ngram_key ][1].append( isReadList )
+                      ngrams[ ngram_key ][2].append( 1 )# how often did the ngram appear
+                 # this ngram has not been so far, so store it in the ngrams-dict with counter 1
+                 else:
+                   ngrams[ngram_key] = [ [nodeList] , [isReadList] , [1] ]
+
+                 nodeList   = [ parent_tup, key ]
+                 isReadList = [ self.isRead[i-1], self.isRead[i] ]
+                 ips        = [ self.ips[i-1], self.ips[i] ]
+                 break
+
+           #reset lists
+           else:
+               nodeList   = [] 
+               isReadList = []
+           break
+       grandparent = parent
+       parent = current
+
+     # if the end of the memory graph is reached and nodeList is not empty
+     if len( nodeList ) > 0 and len( nodeList ) > 0.5 * self.total:
+       if nodeList[0] in ngrams: 
+        ngrams[ nodeList[0] + nodeList[1] ][0].append( nodeList )
+        ngrams[ nodeList[0] + nodeList[1] ][1].append( isReadList )        
+        ngrams[ nodeList[0] + nodeList[1] ][2].append( 1 )
+       else:
+        ngrams[ nodeList[0] + nodeList[1] ] = [ [nodeList] , [isReadList] , [1] ]
+
+     occurences = numpy.array([])
+
+     counter = 0    
+     for key in ngrams:
+       for entry in range(0, len(ngrams[key][2])):
+         # compute how often the ngram appears and only write out the ones which appear relativel often
+         ratio = ngrams[key][2][entry]/float(self.total)
+         if ratio > 0.01:
+           f = open(sys.argv[1] + ".ngram" + str(counter), "w")
+           for length in range(0, len(ngrams[key][0][entry])):
+             f.write("%s %s %s\n" %(ngrams[key][0][entry][length][0], ngrams[key][0][entry][length][1], ngrams[key][1][entry][length]))
+           occurences = numpy.append(occurences, ngrams[key][2][entry])
+           f.close()  
+           counter = counter + 1
+     # store 
+     numpy.savetxt(sys.argv[1]+".n", occurences, fmt="%lf")
+
+
+
+   def plot_graph(self, outfilename):
+      for tid in self.trace_data.get_trace_ids():
+         self.plot_graph_thread(tid, outfilename + "." + str(tid))
+      return
+
+   def plot_graph_thread(self, tid, outfilename):
+      gdata = self.graph_data[tid]
+      if gdata.graph == None:
+        print("Run first create_graph()")
+        return False
+      gdata.graph.write_png(outfilename+".png")
+
+   def reduce_graph(self, threshold=0):
+      for tid in self.trace_data.get_trace_ids():
+         self.reduce_graph_thread(tid, threshold)
+      return
+      
+   def reduce_graph_thread(self, tid, threshold=0):
+
+      gdata = self.graph_data[tid]
+
+
+      if len(gdata.edges.keys()) == 0:
+        print("Run first create_graph()")
+        return False
+
+      gdata.edges_reduced = {}
+      gdata.graph = pydot.Dot(graph_type='digraph')
+
+      # iterate through nodes and edges and filter by value
+      for key in gdata.edges.keys():
+
+        # check for most visited nodes
+        if gdata.tree[key][1] > threshold * gdata.total:
+
+          # iterate over edges and connect most visited nodes
+          for parent_key in gdata.edges[key]:
+
+            if parent_key != "Last" and gdata.tree[parent_key][1] > threshold * gdata.total:
+
+              edge_label = ""
+
+              for grandparent_key in gdata.edges[key][parent_key].keys():
+
+                n = gdata.edges[key][parent_key][grandparent_key]
+
+                if gdata.tree[parent_key][1] > threshold * gdata.total and gdata.edges[key][parent_key][grandparent_key][1] > threshold * gdata.total:
+                  if key not in gdata.edges_reduced:
+                    gdata.edges_reduced[key] = { parent_key: { grandparent_key: n } }
+                  if parent_key not in gdata.edges_reduced[key]:
+                    gdata.edges_reduced[key].update({ parent_key: { grandparent_key: n } })
+                  if grandparent_key not in gdata.edges_reduced[key][parent_key]:
+                     gdata.edges_reduced[key][parent_key].update({ grandparent_key: n })
+                  else:
+                     gdata.edges_reduced[key][parent_key][grandparent_key] = n
+                  edge_counter = gdata.edges[key][parent_key][grandparent_key][1]
+                  edge_label =  edge_label + "\n" + str(edge_counter) + " " + str(grandparent_key[0]) + "_" + str(grandparent_key[1]) + "_" + str(grandparent_key[2])
+
+              if edge_label != "":
+                new_edge =  pydot.Edge(gdata.tree[parent_key][0], gdata.tree[key][0])
+                gdata.graph.add_node(gdata.tree[parent_key][0])
+                gdata.graph.add_node(gdata.tree[key][0])
+                gdata.graph.add_edge( new_edge )
+                new_edge.set_label( edge_label ) 
+
+
+def main():
+   import time
+
+   start = time.time()
+   if not len(sys.argv) == 3:
+      print(sys.arg[0] + " <trace_file.trace> <access_loc_file.acloc>" )
+   g = Graph(sys.argv[1], sys.argv[2]);
+
+   g.create_graph()
+   g.plot_graph(sys.argv[1])
+
+   g.reduce_graph(threshold=0.001)
+   g.plot_graph(sys.argv[1]+"_reduced")
+
+#   g.get_ngrams()   
+   end = time.time()
+   print ("Elapsed time: ", end - start)
+   
+if __name__ == "__main__":
+   main()
+
