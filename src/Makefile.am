@@ -34,5 +34,21 @@ libmatir_la_LDFLAGS  = -version-info @LIB_CURRENT@:@LIB_REVISION@:@LIB_AGE@ `llv
 libmatir_la_LDLIBS   = `llvm-config --ldlibs`
 
 
+bin_PROGRAMS = \
+        mat-rd \
+	mat-b2t
+
+mat_rd_SOURCES  = mat_reuse_distance_main.cpp mat_reuse_distance.cpp mat_io.cpp mat_util.cpp
+mat_rd_CPPFLAGS =
+mat_rd_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11 
+mat_rd_LDFLAGS  = -L./ `llvm-config --ldflags` -W
+
+mat_b2t_SOURCES  = mat_b2t_main.cpp mat_reuse_distance.cpp mat_io.cpp mat_util.cpp
+mat_b2t_CPPFLAGS =
+mat_b2t_CXXFLAGS = -O2 -g -Wall -fopenmp=libomp -fno-inline -Wno-deprecated -std=c++11 
+mat_b2t_LDFLAGS  = -L./ `llvm-config --ldflags` -W
+
+
+
 
 

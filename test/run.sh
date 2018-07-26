@@ -11,6 +11,9 @@ export LD_LIBRARY_PATH=/g/g90/sato5/opt/opt-catalyst/lib64:$LD_LIBRARY_PATH
 
 bin=""
 case $1 in
+    0) ## clean trace
+	rm -rf ./mat_llvm_trace/*
+	;;
     1) ## MAT-LLVM simple
 	export OMP_NUM_THREADS=1
 	export MAT_DIR=./mat_llvm_trace/
@@ -36,15 +39,20 @@ case $1 in
 	time -p ${pin_dir}/pin -t ${mat_library}  -- ./mat_test_stream_mat_pin
 	;;
     5) ## MAT reuse distance
-	time -p ./mat_test_rd $2
+	time -p ../src/mat-rd $2
+	;;
+    6) ## MAT reuse distance
+	time -p ../src/mat-b2t $2
 	;;
     *)
 	echo "No such test case: $1"
+	echo "  0) Clean trace files"
 	echo "  1) MAT-LLVM simple"
 	echo "  2) MAT-PIN  simple"
 	echo "  3) MAT-LLVM stream"
 	echo "  4) MAT-PIN  stream"
 	echo "  5) MAT reuse distance"
+	echo "  6) MAT binary to text"
 	;;
 esac
 wait
