@@ -41,8 +41,13 @@ case $1 in
     5) ## MAT reuse distance
 	time -p ../src/mat-rd $2
 	;;
-    6) ## MAT reuse distance
+    6) ## MAT binary to text
 	time -p ../src/mat-b2t $2
+	;;
+    7) ## MAT mgraph
+	touch .empty
+	time -p ../scripts/mat-mg $2 .empty
+	rm .empty
 	;;
     *)
 	echo "No such test case: $1"
@@ -53,6 +58,7 @@ case $1 in
 	echo "  4) MAT-PIN  stream"
 	echo "  5) MAT reuse distance"
 	echo "  6) MAT binary to text"
+	echo "  7) MAT memory graph"
 	;;
 esac
 wait

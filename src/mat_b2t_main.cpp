@@ -9,12 +9,32 @@
 #include "mat.h"
 #include "mat_util.h"
 #include "mat_io.h"
+
+
+// ip = int(vec[0])
+//   access_address = int(vec[1])
+//   block_address  = int(vec[3])
+//   is_read        = int(vec[4])
+//   object_size    = int(vec[6])
+//   tid            = int(vec[7])
+
   
 static void mat_b2t_print_mem_trace(size_t id, int tid, mat_trace_mem_t *mtrace)
 {
   int is_read;
+  size_t offset;
+
   is_read = (mtrace->type == MAT_TRACE_LOAD)? 1:0;
-  printf("%lu %lu %lu %d %lu %d\n", id, (unsigned long)mtrace->addr, (unsigned long)mtrace->head_addr, is_read, mtrace->alloc_size, tid);
+  offset = (unsigned long)mtrace->addr - (unsigned long)mtrace->head_addr;
+  printf("%lu %lu %lu %lu %d %lu %lu %d\n",
+	 id,
+	 (unsigned long)mtrace->addr,
+	 offset,
+	 (unsigned long)mtrace->head_addr,
+	 is_read,
+	 mtrace->size,
+	 mtrace->alloc_size,
+	 tid);
 }
 
 static void mat_b2t_print(const char* trace_path)
