@@ -7,9 +7,6 @@ AM_CPPFLAGS = -I$(libgotcha_INCLUDE) -I../src/
 AM_LDFLAGS = -L$(libgotcha_LDFLAGS) -L../src/.libs/
 AM_LIBADD  = -lgotcha
 
-
-
-
 noinst_PROGRAMS = \
 	mat_test_simple \
 	mat_test_simple_mat_pin \

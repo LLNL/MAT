@@ -17,7 +17,7 @@
 static size_t mat_rd_get_cache_line_id(mat_rd_t *rd, void* addr)
 {
   size_t id;
-  id =  (size_t)addr / (size_t)rd->cache_line_size;
+  id =  (size_t)addr / (size_t)rd->config.cache_line_size;
   return id;
 }
 
@@ -32,7 +32,7 @@ static ssize_t mat_rd_compute_reuse_distance(mat_rd_t *rd, mat_rd_mem_t *mem)
        it++) {
     mat_rd_mem_t *m;
     m  = *it;
-    if (m->cache_line_id == mem->cache_line_id) {
+    if (m->meta.cache_line_id == mem->meta.cache_line_id) {
       rd->access_list->erase(it);
       reuse_distance  = rdist;
       break;
@@ -44,9 +44,10 @@ static ssize_t mat_rd_compute_reuse_distance(mat_rd_t *rd, mat_rd_mem_t *mem)
   return reuse_distance;
 }
 
-static void mat_rd_add_stat(mat_rd_t *rd, mat_rd_mem_t *mem, ssize_t rdistance)
+static void mat_rd_add_stat(mat_rd_t *rd, mat_rd_mem_t *mem)
 {
   vector<mat_rd_mem_t*> *mem_vec;
+  ssize_t rdistance = mem->meta.reuse_distance;
   if (rd->rdist_map->find(rdistance) == rd->rdist_map->end()) {
     rd->rdist_map->insert(make_pair(rdistance, new vector<mat_rd_mem_t*>()));
   }
@@ -55,11 +56,12 @@ static void mat_rd_add_stat(mat_rd_t *rd, mat_rd_mem_t *mem, ssize_t rdistance)
   return;
 }
 
-mat_rd_t* mat_rd_create(size_t cache_line_size)
+mat_rd_t* mat_rd_create(mat_rd_config *config)
 {
   mat_rd_t *rd = NULL;
   rd = (mat_rd_t*) malloc(sizeof(mat_rd_t));
-  rd->cache_line_size = cache_line_size;
+  rd->config = *config;
+  //  rd->cache_line_size = cache_line_size;
   rd->access_list    = new list<mat_rd_mem_t*>();
   rd->rdist_map = new map<ssize_t, vector<mat_rd_mem_t*>*>();
   return rd;
@@ -75,11 +77,11 @@ void mat_rd_mem_access(mat_rd_t *rd,  mat_trace_mem_t *memt)
   m->trace = *memt;
 
   /* Cache line ID */
-  m->cache_line_id = mat_rd_get_cache_line_id(rd, m->trace.addr);
-
+  m->meta.cache_line_id = mat_rd_get_cache_line_id(rd, m->trace.addr);
   /* Compute reuse distance*/
-  reuse_distance   = mat_rd_compute_reuse_distance(rd, m);
-  mat_rd_add_stat(rd, m, reuse_distance);
+  m->meta.reuse_distance   = mat_rd_compute_reuse_distance(rd, m);
+  
+  mat_rd_add_stat(rd, m);
   
   //  MAT_DBG("addr: %lu size: %lu: dist: %d", m->trace.addr, m->trace.size, reuse_distance);
   return;
@@ -88,6 +90,12 @@ void mat_rd_mem_access(mat_rd_t *rd,  mat_trace_mem_t *memt)
 void mat_rd_loop(mat_rd_t *rd,  mat_trace_loop_t *loopt)
 {
   
+}
+
+void mat_rd_bb(mat_rd_t *rd, mat_trace_bb_t *bb)
+{
+  rd->num_insts += bb->size;
+  return;
 }
 
 void mat_rd_input(mat_rd_t *rd, const char* trace_path)
@@ -110,11 +118,13 @@ void mat_rd_input(mat_rd_t *rd, const char* trace_path)
       break;
     case MAT_LOOP:
       mat_rd_loop(rd, &mtrace.loop);
+    case MAT_BB:
+      mat_rd_bb(rd, &mtrace.bb);
       break;
     default:
       MAT_ERR("No such control: %d", mtrace.control);
     }
-    fprintf(stderr, "Progress = %d \%\r", read_size * 100 / file_size);
+    fprintf(stderr, "RD Progress = %d \%\r", read_size * 100 / file_size);
   }
   mat_io_fclose(fd);
   return;
@@ -123,34 +133,62 @@ void mat_rd_input(mat_rd_t *rd, const char* trace_path)
 void mat_rd_print(mat_rd_t* rd)
 {
   map<ssize_t, vector<mat_rd_mem_t*>*>::iterator it, it_end;
-  size_t total_bytes = 0;
-  size_t total_access = 0;
-  
-  MAT_PRT("----------------------------------------------------------------");
-  MAT_PRT("<reuse distance>\t<# of access>\t<access size(bytes)>");
-  MAT_PRT("----------------------------------------------------------------");
+  size_t total_read_access = 0, total_write_access = 0;
+  size_t total_read_bytes  = 0, total_write_bytes  = 0;
+
+#define MAT_PRT_LINE							\
+  do {									\
+    MAT_PRT("-------------------------------------------------------------------------------------------------------------------"); \
+  } while(0);
+
+  MAT_PRT_LINE;
+  MAT_PRT("%15s\t%20s\t%20s\t%19s\t%19s",
+	  "<reuse distance>",
+	  "<# of read>", "<# of write>" ,
+	  "<read(bytes)>", "<write(bytes)>");
+  MAT_PRT_LINE;
+
   for (it = rd->rdist_map->begin(), it_end = rd->rdist_map->end();
        it != it_end;
        it++) {
     vector<mat_rd_mem_t*> *mem_vec;
-    ssize_t dist = it->first;
+    ssize_t dist;
+    size_t length;
+    size_t read_access, write_access;
+    size_t read_bytes, write_bytes;
+    
+    dist    =  it->first;
     mem_vec = it->second;
-    size_t length = mem_vec->size();
-    size_t bytes = 0;
+    length = mem_vec->size();
+
+    read_access = write_access = 0;
+    read_bytes  = write_bytes  = 0;
     for (size_t i = 0; i < length; i++) {
       mat_rd_mem_t *m;
       m = mem_vec->at(i);
-      bytes += m->trace.size;
+      if (m->trace.type == MAT_TRACE_LOAD) {
+	read_access++;
+	read_bytes += m->trace.size;	
+      } else if (m->trace.type == MAT_TRACE_STORE) {
+	write_access++;
+	write_bytes += m->trace.size;	
+      } else {
+	MAT_ERR("No such access type: %d", m->trace.type);
+      }
+
     }
-    MAT_PRT("%15d\t%20lu\t%19lu", dist, length, bytes);
-    //    MAT_PRT("%d, %lu, %lu", dist, length, bytes);
-    total_access += length;
-    total_bytes += bytes;
+    MAT_PRT("%15d\t%20lu\t%20lu\t%19lu\t%19lu", dist, read_access, write_access, read_bytes, write_bytes);
+
+    total_read_access  += read_access;
+    total_write_access += write_access;
+    total_read_bytes   += read_bytes;
+    total_write_bytes  += write_bytes;
   }
-  MAT_PRT("----------------------------------------------------------------");
-  MAT_PRT("Total accesses: %lu", total_access);
-  MAT_PRT("Total bytes: %lu", total_bytes);
-  MAT_PRT("----------------------------------------------------------------");
+  MAT_PRT_LINE;
+  MAT_PRT("%15s\t%20lu\t%20lu\t%19lu\t%19lu", "Total", total_read_access, total_write_access, total_read_bytes, total_write_bytes);
+  MAT_PRT_LINE;
+  MAT_PRT("# of instructions: %lu", rd->num_insts);
+  MAT_PRT_LINE;
 }
 
 void mat_rd_output(mat_rd_t* rd)

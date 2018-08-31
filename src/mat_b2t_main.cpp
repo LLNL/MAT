@@ -18,23 +18,35 @@
 //   object_size    = int(vec[6])
 //   tid            = int(vec[7])
 
+typedef struct {
+  int exclude_stack;
+} mat_b2t_conf_t;
+mat_b2t_conf_t b2t_conf;
+
   
 static void mat_b2t_print_mem_trace(size_t id, int tid, mat_trace_mem_t *mtrace)
 {
   int is_read;
   size_t offset;
+  size_t head_addr;
 
   is_read = (mtrace->type == MAT_TRACE_LOAD)? 1:0;
   offset = (unsigned long)mtrace->addr - (unsigned long)mtrace->head_addr;
+  
+  if (b2t_conf.exclude_stack && mtrace->head_addr == 0) return;
+
+  
+  head_addr = (mtrace->head_addr == 0)? id:(size_t)mtrace->head_addr;
   printf("%lu %lu %lu %lu %d %lu %lu %d\n",
 	 id,
 	 (unsigned long)mtrace->addr,
 	 offset,
-	 (unsigned long)mtrace->head_addr,
+	 head_addr,
 	 is_read,
 	 mtrace->size,
 	 mtrace->alloc_size,
 	 tid);
+  
 }
 
 static void mat_b2t_print(const char* trace_path)
@@ -57,10 +69,12 @@ static void mat_b2t_print(const char* trace_path)
       break;
     case MAT_LOOP:
       break;
+    case MAT_BB:
+      break;
     default:
       MAT_ERR("No such control: %d", mtrace.control);
     }
-    fprintf(stderr, "Progress = %lu \%\r", read_size * 100 / file_size);
+    fprintf(stderr, "B2T Progress = %lu \%\r", read_size * 100 / file_size);
   }
   mat_io_fclose(fd);
   return;
@@ -68,11 +82,16 @@ static void mat_b2t_print(const char* trace_path)
 
 int main(int argc, char** argv)
 {
-  if (argc <= 1) {
-    fprintf(stderr, "%s <input binary>\n", argv[0]);
+  int flag;
+  if (argc <= 2) {
+    fprintf(stderr, "%s <input binary> <flag> \n", argv[0]);
+    fprintf(stderr, "  flag=0: all\n");
+    fprintf(stderr, "  flag=1: exclude stack\n");
     exit(0);
   }
-
+  flag = atoi(argv[2]);
+  b2t_conf.exclude_stack = (flag == 1)? 1:0;
+  
   mat_b2t_print(argv[1]);
 
   return 0;

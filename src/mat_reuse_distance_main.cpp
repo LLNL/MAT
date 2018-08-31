@@ -7,11 +7,14 @@
 int main(int argc, char** argv)
 {
   mat_rd_t *rd;
+  mat_rd_config config;
   if (argc <= 1) {
     fprintf(stderr, "%s <trace file path>\n", argv[0]);
     exit(0);
   }
-  rd = mat_rd_create(64);
+  config.cache_line_size = 64;
+  
+  rd = mat_rd_create(&config);
   mat_rd_input(rd, argv[1]);
   mat_rd_print(rd);
   mat_rd_output(rd);

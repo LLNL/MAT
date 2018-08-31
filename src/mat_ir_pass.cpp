@@ -36,15 +36,39 @@ int MAT::location_id = 0;
 size_t MAT::path_name_id = 0;
 void MAT::init_instrumented_functions(Module *M)
 {
-
+  MAT_ERR("This is not used");
   LLVMContext &ctx = M->getContext();
+  // void mat_control(int control, int file_id, int loc_id, int type, void *addr, size_t size)
   mat_func_umap[MAT_CONTROL_STR] =  M->getOrInsertFunction(MAT_CONTROL_STR,
-							      Type::getVoidTy(ctx),
-							      Type::getInt32Ty(ctx),
-							      Type::getInt64PtrTy(ctx),
-							      Type::getInt64Ty(ctx),
-							      NULL);
+							   Type::getVoidTy(ctx),
+							   Type::getInt32Ty(ctx),
+							   Type::getInt32Ty(ctx),
+							   Type::getInt32Ty(ctx),
+							   Type::getInt32Ty(ctx),
+							   Type::getInt64PtrTy(ctx),
+							   Type::getInt64Ty(ctx),
+							   NULL);
   return;
+}
+
+Constant*  MAT::get_control_func(Type *type)
+{
+  LLVMContext &ctx = MAT_M->getContext();
+  Constant* func;
+
+  //void mat_control(int control, int file_id, int loc_id, int type, void *addr, size_t size, int num_insts)
+  func =  MAT_M->getOrInsertFunction(MAT_CONTROL_STR,
+				     Type::getVoidTy(ctx),  /* return */
+				     Type::getInt32Ty(ctx), /* control */
+				     Type::getInt32Ty(ctx), /* file_id */
+				     Type::getInt32Ty(ctx), /* loc_id */
+				     Type::getInt32Ty(ctx), /* type */
+				     type,                  /* addr */
+				     Type::getInt64Ty(ctx), /* size_t */
+				     Type::getInt32Ty(ctx), /* num_insts */
+				     NULL);
+  
+  return func;
 }
 
 void MAT::get_instruction_id(Instruction *I, int *file_id, int *loc_id)
@@ -85,26 +109,36 @@ int MAT::get_path(Instruction *I, const char **file_name, const char **dir_name)
 
 
 int MAT::insert_func(Instruction *I, BasicBlock *BB, int offset, int control,
-		     Value* type, Value*addr, Value* size)
+		     Value* type, Value* addr, Value* size, Value* num_insts)
 {
   int file_id, loc_id;
   vector<Value*> arg_vec;
   IRBuilder<> builder(I);
+  Constant* func;
+  Type *addr_type;
+  CastInst *addr_cast;
+  
   builder.SetInsertPoint(BB, (offset)? ++builder.GetInsertPoint():builder.GetInsertPoint());
-  Constant* func = mat_func_umap.at(MAT_CONTROL_STR);
-  //  arg_vec.push_back(ConstantInt::get(Type::getInt32Ty(*MAT_CTX), control));
+  //  func = mat_func_umap.at(MAT_CONTROL_STR);
+  addr_type = (!addr)? MAT_INT64PTRTY:addr->getType();
+  func = get_control_func(addr_type);
+  
   arg_vec.push_back(MAT_CONST_INT32TY(control));
-  /* file_id */
   get_instruction_id(I, &file_id, &loc_id);
   arg_vec.push_back(MAT_CONST_INT32TY(file_id));
   arg_vec.push_back(MAT_CONST_INT32TY(loc_id));
-  type    = (!type)?    MAT_CONST_INT32TY(0):type;
+  if (!type) type = MAT_CONST_INT32TY(0);
   arg_vec.push_back(type);
-  addr    = (!addr)?    MAT_CONST_INT64PTRTY_NULL:addr;
+  if (!addr) addr = MAT_CONST_INT64PTRTY_NULL;
   arg_vec.push_back(addr);
-  size    = (!size)?    MAT_CONST_INT64TY(0):size;
+  if (!size) size = MAT_CONST_INT64TY(0);
   arg_vec.push_back(size);
+  if (!num_insts) num_insts = MAT_CONST_INT32TY(0);
+  arg_vec.push_back(num_insts);
+  
   builder.CreateCall(func, arg_vec);
+  //  addr->mutateType(tmp_type);
+  //MAT_DBG("inserted !!");
   return 1;
 }
 
@@ -123,11 +157,11 @@ int MATFunc::instrument_init_and_finalize(Function &F)
     for (BasicBlock &BB : F) {
       for (Instruction &I : BB) {
 	if (!is_hook_enabled) {
-	  modified_counter += insert_func(&I, &BB, MAT_IR_PASS_INSERT_BEFORE, MAT_INIT, NULL, NULL, NULL);
+	  modified_counter += insert_func(&I, &BB, MAT_IR_PASS_INSERT_BEFORE, MAT_INIT, NULL, NULL, NULL, NULL);
 	  is_hook_enabled = 1;
 	}
 	if (dyn_cast<ReturnInst>(&I)) {
-	  modified_counter += insert_func(&I, &BB, MAT_IR_PASS_INSERT_BEFORE, MAT_FIN, NULL, NULL, NULL);
+	  modified_counter += insert_func(&I, &BB, MAT_IR_PASS_INSERT_BEFORE, MAT_FIN, NULL, NULL, NULL, NULL);
 	} 
       }
     }
@@ -135,7 +169,7 @@ int MATFunc::instrument_init_and_finalize(Function &F)
   return modified_counter;
 }
 
-int MATFunc::instrument_load_store(Function &F, BasicBlock &BB, Instruction &I)
+int MATFunc::instrument_load_store(Function &F, BasicBlock &BB, Instruction &I, mat_ir_profile_t *profile)
 {
   int modified_counter = 0;
   if (StoreInst *SI = dyn_cast<StoreInst>(&I)) {
@@ -143,36 +177,63 @@ int MATFunc::instrument_load_store(Function &F, BasicBlock &BB, Instruction &I)
     PointerType* pointerType = cast<PointerType>(address_of_store->getType());
     uint64_t storeSize = MAT_DL->getTypeStoreSize(pointerType->getPointerElementType());
     insert_func(&I, &BB, MAT_IR_PASS_INSERT_AFTER , MAT_TRACE,
-		MAT_CONST_INT32TY(MAT_TRACE_STORE), address_of_store, MAT_CONST_INT64TY(storeSize));
+		MAT_CONST_INT32TY(MAT_TRACE_STORE), address_of_store, MAT_CONST_INT64TY(storeSize),
+		MAT_CONST_INT32TY(profile->num_insts));
     modified_counter += 1;
   } else if (LoadInst *LI = dyn_cast<LoadInst>(&I)) {
     Value *address_of_load = LI->getOperand(0);
     PointerType* pointerType = cast<PointerType>(address_of_load->getType());
     uint64_t loadSize = MAT_DL->getTypeStoreSize(pointerType->getPointerElementType());
     insert_func(&I, &BB, MAT_IR_PASS_INSERT_AFTER , MAT_TRACE,
-    		MAT_CONST_INT32TY(MAT_TRACE_LOAD), address_of_load, MAT_CONST_INT64TY(loadSize));
+    		MAT_CONST_INT32TY(MAT_TRACE_LOAD), address_of_load, MAT_CONST_INT64TY(loadSize),
+		MAT_CONST_INT32TY(profile->num_insts));
     modified_counter += 1;
   }
   return modified_counter;
 }
-			       
 
-int MATFunc::handle_function(Function &F)
+int MATFunc::handle_function(Function &F, mat_ir_profile_t *profile)
 {
   int modified_counter = 0;
   modified_counter += instrument_init_and_finalize(F);
   return modified_counter;
 }
 
-int MATFunc::handle_basicblock(Function &F, BasicBlock &BB)
+int MATFunc::handle_basicblock(Function &F, BasicBlock &BB, mat_ir_profile_t *profile)
 {
   return 0;
 }
 
-int MATFunc::handle_instruction(Function &F, BasicBlock &BB, Instruction &I)
+int MATFunc::handle_basicblock_postprocess(Function &F, BasicBlock &BB, mat_ir_profile_t *profile)
+{
+  size_t size;
+  int rest_num_insts;
+  size = BB.size();
+  rest_num_insts = profile->num_insts;
+  Instruction &I = BB.back();
+  insert_func(&I, &BB, MAT_IR_PASS_INSERT_BEFORE, MAT_BB,
+	      NULL, NULL,
+	      MAT_CONST_INT64TY(size),
+	      MAT_CONST_INT32TY(rest_num_insts));
+  profile->num_insts = 0;
+  return 1;
+}
+
+int MATFunc::handle_instruction(Function &F, BasicBlock &BB, Instruction &I, mat_ir_profile_t *profile)
 {
   int modified_counter = 0;
-  modified_counter += instrument_load_store(F, BB, I); /* */
+  CallInst *CI = NULL;
+  StringRef name;
+
+  if ((CI = dyn_cast<CallInst>(&I)) != NULL) {
+    name = CI->getCalledValue()->stripPointerCasts()->getName();
+    if (name.startswith("mat")) return modified_counter;
+    if (name.startswith("llvm.dbg")) return modified_counter;
+  }
+  
+  profile->num_insts++;
+  modified_counter += instrument_load_store(F, BB, I, profile); /* */
+  if (modified_counter > 0) profile->num_insts = 0;
   return modified_counter;
 }
 
@@ -182,7 +243,7 @@ bool MATFunc::doInitialization(Module &M)
   MAT_M   = &M;
   MAT_CTX = &(M.getContext());
   MAT_DL  = new DataLayout(MAT_M);
-  init_instrumented_functions(&M);
+  //  init_instrumented_functions(&M);
 
   return true;
 }
@@ -190,12 +251,16 @@ bool MATFunc::doInitialization(Module &M)
 bool MATFunc::runOnFunction(Function &F)
 {
   int modified_counter = 0;
-  modified_counter += handle_function(F);
+  mat_ir_profile_t profile;
+  memset(&profile, 0, sizeof(mat_ir_profile_t));
+  
+  modified_counter += handle_function(F, &profile);
   for (BasicBlock &BB : F) {
-    modified_counter += handle_basicblock(F, BB);
+    modified_counter += handle_basicblock(F, BB, &profile);
     for (Instruction &I : BB) {
-      modified_counter += handle_instruction(F, BB, I);
+      modified_counter = handle_instruction(F, BB, I, &profile);
     }
+    modified_counter += handle_basicblock_postprocess(F, BB, &profile);
   }
   return modified_counter > 0;
 }
@@ -217,7 +282,7 @@ bool MATLoop::doInitialization(Loop *L, LPPassManager &LPM)
   MAT_M   = L->getLoopPreheader()->getModule();
   MAT_CTX = &(MAT_M->getContext());
   MAT_DL  = new DataLayout(MAT_M);
-  init_instrumented_functions(MAT_M);
+  //  init_instrumented_functions(MAT_M);
   return true;
 }
 
@@ -237,12 +302,12 @@ int MATLoop::handle_loop(Loop *L, LPPassManager &LPM)
   BB = L->getLoopPreheader();
   I = &(BB->front());
   insert_func(I, BB, MAT_IR_PASS_INSERT_AFTER, MAT_LOOP,
-	      MAT_CONST_INT64TY(MAT_LOOP_PREHEADER), NULL, MAT_CONST_INT64TY(loop_id));
+	      MAT_CONST_INT64TY(MAT_LOOP_PREHEADER), NULL, MAT_CONST_INT64TY(loop_id), NULL);
   /* Header begin */
   BB = L->getHeader();
   I = &(BB->front());
   insert_func(I, BB, MAT_IR_PASS_INSERT_BEFORE, MAT_LOOP,
-	      MAT_CONST_INT64TY(MAT_LOOP_HEADER_BEGIN), NULL, MAT_CONST_INT64TY(loop_id));    
+	      MAT_CONST_INT64TY(MAT_LOOP_HEADER_BEGIN), NULL, MAT_CONST_INT64TY(loop_id), NULL);    
   /* Body begin */
   BB = L->getHeader();
   I = &(BB->back());
@@ -250,7 +315,7 @@ int MATLoop::handle_loop(Loop *L, LPPassManager &LPM)
     BB = BI->getSuccessor(0);
     I  = &(BB->front());
     insert_func(I, BB, MAT_IR_PASS_INSERT_BEFORE, MAT_LOOP,
-		MAT_CONST_INT64TY(MAT_LOOP_BODY_BEGIN), NULL, MAT_CONST_INT64TY(loop_id));    
+		MAT_CONST_INT64TY(MAT_LOOP_BODY_BEGIN), NULL, MAT_CONST_INT64TY(loop_id), NULL);    
   } else {
     MAT_ERR("Loop header basicblock does not end with branch instruction");
   }
@@ -259,7 +324,7 @@ int MATLoop::handle_loop(Loop *L, LPPassManager &LPM)
   for (auto BB: BBs) {
     I = &(BB->front());
     insert_func(I, BB, MAT_IR_PASS_INSERT_BEFORE, MAT_LOOP,
-		MAT_CONST_INT64TY(MAT_LOOP_BODY_END), NULL, MAT_CONST_INT64TY(loop_id));
+		MAT_CONST_INT64TY(MAT_LOOP_BODY_END), NULL, MAT_CONST_INT64TY(loop_id), NULL);
   }
   /* Exit node */
   // BB = L->getExitBlock();
@@ -273,7 +338,7 @@ int MATLoop::handle_loop(Loop *L, LPPassManager &LPM)
     if (!L->contains(BB)) {
       I = &(BB->front());
       insert_func(I, BB, MAT_IR_PASS_INSERT_BEFORE, MAT_LOOP,
-		  MAT_CONST_INT64TY(MAT_LOOP_EXIT), NULL, MAT_CONST_INT64TY(loop_id));
+		  MAT_CONST_INT64TY(MAT_LOOP_EXIT), NULL, MAT_CONST_INT64TY(loop_id), NULL);
     }
   }
 
@@ -293,17 +358,24 @@ void MATLoop::getAnalysisUsage(AnalysisUsage &AU) const
 
 
 
-
-
-
 static void registerMAT(const PassManagerBuilder &, legacy::PassManagerBase &PM)
 {
   PM.add(new MATFunc);
   PM.add(new MATLoop);
 }
 
-static RegisterStandardPasses RegisterMAT(PassManagerBuilder::EP_EarlyAsPossible, registerMAT);
+//static RegisterStandardPasses RegisterMAT(PassManagerBuilder::EP_EarlyAsPossible, registerMAT);
+static RegisterStandardPasses RegisterMAT(PassManagerBuilder::EP_OptimizerLast, registerMAT);
 
+static RegisterPass<MATLoop> X("matloop", "MAT loop Pass",
+			     false /* Only looks at CFG */,
+			     false /* Analysis Pass */);
+
+static RegisterPass<MATFunc> Y("matfunc", "MAT func Pass",
+			     false /* Only looks at CFG */,
+			     false /* Analysis Pass */);
+
+// opt -load ../src/.libs/libmatir.so -matfunc mat_test_simple_ll-mat_test_simple.o 
 
 /* ============== End of class ================================= */
 

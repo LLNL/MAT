@@ -21,6 +21,7 @@
 #include "mat_alloc_tree.h"
 
 #define MAT_MAX_NUM_THREADS (256)
+#define MAT_INST_ID(file_id, loc_id) ((file_id + 1) * (loc_id))
 
 typedef struct {
   FILE *trace_fd = NULL;
@@ -73,7 +74,7 @@ static FILE* get_fd(int tid)
 }
 
 
-static void handle_trace(int control, int file_id, int loc_id, int type, void *addr, size_t size)
+static void handle_trace(int control, int file_id, int loc_id, int type, void *addr, size_t size, int num_insts)
 {
   int tid;
   FILE *fd;
@@ -87,13 +88,14 @@ static void handle_trace(int control, int file_id, int loc_id, int type, void *a
   mat_alloc_tree_lookup(addr, &start_addr, &alloc_size);
 
   mtrace.control  = control;
-  mtrace.id       = (file_id + 1) * (loc_id + 1);
+  mtrace.id       = MAT_INST_ID(file_id, loc_id);
   mtrace.tid      = tid;
   mtrace.mem.type = type;
   mtrace.mem.head_addr = start_addr;
+  mtrace.mem.alloc_size = alloc_size;
   mtrace.mem.addr = addr;
   mtrace.mem.size = size;
-  mtrace.mem.alloc_size = alloc_size;
+  mtrace.mem.num_insts = num_insts;
   fwrite(&mtrace, sizeof(mat_trace_t), 1, fd);
   
 #if 0  
@@ -120,7 +122,7 @@ static void handle_trace(int control, int file_id, int loc_id, int type, void *a
 }
 
 
-static void handle_loop(int control, int file_id, int loc_id, int type, void *addr, size_t id)
+static void handle_loop(int control, int file_id, int loc_id, int type, void *addr, size_t id, int num_insts)
 {
   switch(type) {
   case MAT_LOOP_PREHEADER:
@@ -141,6 +143,27 @@ static void handle_loop(int control, int file_id, int loc_id, int type, void *ad
   }
 }
 
+
+static void handle_bb(int control, int file_id, int loc_id, int type, void *addr, size_t size, int num_insts)
+{
+  int tid;
+  FILE *fd;
+  void* start_addr  = 0;
+  size_t alloc_size = 0;
+  mat_trace_t mtrace;
+
+  tid = get_tid();
+  fd = get_fd(tid);
+  
+  mtrace.control  = control;
+  mtrace.id       = MAT_INST_ID(file_id, loc_id);
+  mtrace.tid      = tid;
+  mtrace.bb.size  = size;
+  mtrace.bb.rest_num_insts = num_insts;
+  fwrite(&mtrace, sizeof(mat_trace_t), 1, fd);
+  return;
+}
+
 void mat_enable()
 {
   mat_config.mode = MAT_ENV_NAME_MODE_ENABLE;
@@ -153,7 +176,8 @@ void mat_disable()
   MAT_PRT("Disabled");
 }
 
-void MAT_CONTROL(int control, int file_id, int loc_id, int type, void *addr, size_t size)
+extern "C" void MAT_CONTROL(int control, int file_id, int loc_id, int type, void *addr, size_t size, int num_insts)
+//void MAT_CONTROL(int control, int file_id, int loc_id, int type, void *addr, size_t size)
 {
   switch(control) {
   case MAT_INIT:
@@ -167,13 +191,15 @@ void MAT_CONTROL(int control, int file_id, int loc_id, int type, void *addr, siz
 
   if (mat_config.mode == MAT_ENV_NAME_MODE_DISABLE) return;
 
-
   switch(control) {
   case MAT_TRACE:
-    handle_trace(control, file_id, loc_id, type, addr, size);
+    handle_trace(control, file_id, loc_id, type, addr, size, num_insts);
     break;
   case MAT_LOOP:
-    handle_loop(control, file_id, loc_id, type, addr, size);
+    handle_loop(control, file_id, loc_id, type, addr, size, num_insts);
+    break;
+  case MAT_BB:
+    handle_bb(control, 0, 0, 0, NULL, size, num_insts);
     break;
   default:
     MAT_ERR("No such control: %d", control);

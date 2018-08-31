@@ -11,14 +11,17 @@
 using namespace llvm;
 using namespace std;
 
+#define MAT_INT64PTRTY (Type::getInt64PtrTy(*MAT_CTX))
 #define MAT_CONST_INT64TY(val)     ConstantInt::get(Type::getInt64Ty(*MAT_CTX), val)
 #define MAT_CONST_INT32TY(val)     ConstantInt::get(Type::getInt32Ty(*MAT_CTX), val)
 #define MAT_CONST_INT64PTRTY_NULL  ConstantPointerNull::get(Type::getInt64PtrTy(*MAT_CTX))
 
-
-
 #define MAT_IR_PASS_INSERT_AFTER  (1)
 #define MAT_IR_PASS_INSERT_BEFORE (0)
+
+typedef struct {
+  size_t num_insts = 0;
+} mat_ir_profile_t;
 
 class MAT
 {
@@ -35,8 +38,9 @@ class MAT
   
   void init_instrumented_functions(Module *M);
   void get_instruction_id(Instruction *I, int *file_id, int *loc_id);
+  Constant* get_control_func(Type *type);
   int get_path(Instruction *I, const char **file_name, const char **dir_name);
-  int insert_func(Instruction *I, BasicBlock *BB, int offset, int control, Value *type, Value* addr, Value* size);
+  int insert_func(Instruction *I, BasicBlock *BB, int offset, int control, Value *type, Value* addr, Value* size, Value* num_insts);
 };
 
 class MATFunc: public MAT, public FunctionPass
@@ -53,17 +57,14 @@ class MATFunc: public MAT, public FunctionPass
   virtual void getAnalysisUsage(AnalysisUsage &AU) const;
   
  private:
-
-
   int instrument_init_and_finalize(Function &F);
 
-
-
   /* Outer Handlers */
-  int handle_function(Function &F);
-  int handle_basicblock(Function &F, BasicBlock &BB);
-  int handle_instruction(Function &F, BasicBlock &BB, Instruction &I);
-  int instrument_load_store(Function &F, BasicBlock &BB, Instruction &I);
+  int handle_function(Function &F, mat_ir_profile_t *profile);
+  int handle_basicblock(Function &F, BasicBlock &BB, mat_ir_profile_t *profile);
+  int handle_basicblock_postprocess(Function &F, BasicBlock &BB, mat_ir_profile_t *profile);
+  int handle_instruction(Function &F, BasicBlock &BB, Instruction &I, mat_ir_profile_t *profile);
+  int instrument_load_store(Function &F, BasicBlock &BB, Instruction &I, mat_ir_profile_t *profile);
   
 };
 

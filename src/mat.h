@@ -15,7 +15,7 @@ extern "C" {
 
 #define MAT_CONTROL mat_control
 #define MAT_CONTROL_STR xstr(MAT_CONTROL)
-void MAT_CONTROL(int control, int file_id, int loc_id, int type, void *addr, size_t size);
+  //void MAT_CONTROL(int control, int file_id, int loc_id, int type, void *addr, size_t size);
 
 #define MAT_TRACE_FILE_DIR    "."
 #define MAT_TRACE_DIR_FORMAT    "%s/mat-%u"  
@@ -36,6 +36,8 @@ void MAT_CONTROL(int control, int file_id, int loc_id, int type, void *addr, siz
 #define MAT_LOOP_LATCH_BEGIN  MAT_LOOP_BODY_END
 #define MAT_LOOP_EXIT         (204)
 
+#define MAT_BB (30)
+
 #define MAT_DEBUG_PRINT (90)
 
 typedef struct {
@@ -44,6 +46,7 @@ typedef struct {
   size_t alloc_size;
   void *addr;
   size_t size;
+  int num_insts;
 } mat_trace_mem_t;
 
 typedef struct {
@@ -53,12 +56,18 @@ typedef struct {
 } mat_trace_loop_t;
 
 typedef struct {
+  size_t size;
+  int rest_num_insts;
+} mat_trace_bb_t;
+
+typedef struct {
   int control;
   size_t id;
   int tid;
   union {
     mat_trace_mem_t mem;
-    mat_trace_loop_t loop;    
+    mat_trace_loop_t loop;
+    mat_trace_bb_t bb;
   };
 } mat_trace_t;
 
