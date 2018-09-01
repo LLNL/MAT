@@ -179,12 +179,8 @@ void mat_rd_input(mat_rd_t *rd, const char* trace_path)
 
 void mat_rd_print(mat_rd_t* rd)
 {
-  //  map<ssize_t, vector<mat_rd_mem_t*>*>::iterator it, it_end;
-  //  size_t total_read_access = 0, total_write_access = 0;
-  //  size_t total_read_bytes  = 0, total_write_bytes  = 0;
   mat_model_stat_t *stat;
   map<ssize_t, mat_model_stat_rd_element_t*>::iterator it, it_end;
-
   stat = &rd->stat;
 
 #define MAT_PRT_LINE							\
@@ -199,43 +195,6 @@ void mat_rd_print(mat_rd_t* rd)
 	  "<read(bytes)>", "<write(bytes)>");
   MAT_PRT_LINE;
 
-  // for (it = rd->rdist_map->begin(), it_end = rd->rdist_map->end();
-  //      it != it_end;
-  //      it++) {
-  //   vector<mat_rd_mem_t*> *mem_vec;
-  //   ssize_t dist;
-  //   size_t length;
-  //   size_t read_access, write_access;
-  //   size_t read_bytes, write_bytes;
-    
-  //   dist    =  it->first;
-  //   mem_vec = it->second;
-  //   length = mem_vec->size();
-
-  //   read_access = write_access = 0;
-  //   read_bytes  = write_bytes  = 0;
-  //   for (size_t i = 0; i < length; i++) {
-  //     mat_rd_mem_t *m;
-  //     m = mem_vec->at(i);
-  //     if (m->trace.type == MAT_TRACE_LOAD) {
-  // 	read_access++;
-  // 	read_bytes += m->trace.size;	
-  //     } else if (m->trace.type == MAT_TRACE_STORE) {
-  // 	write_access++;
-  // 	write_bytes += m->trace.size;	
-  //     } else {
-  // 	MAT_ERR("No such access type: %d", m->trace.type);
-  //     }
-
-  //   }
-  //   MAT_PRT("%15d\t%20lu\t%20lu\t%19lu\t%19lu", dist, read_access, write_access, read_bytes, write_bytes);
-
-  //   total_read_access  += read_access;
-  //   total_write_access += write_access;
-  //   total_read_bytes   += read_bytes;
-  //   total_write_bytes  += write_bytes;
-  // }
-
   for (it = stat->rdist_stat_map->begin(), it_end = stat->rdist_stat_map->end();
        it != it_end;
        it++) {
@@ -243,12 +202,8 @@ void mat_rd_print(mat_rd_t* rd)
     mat_model_stat_rd_element_t *e = it->second;
     MAT_PRT("%15d\t%20lu\t%20lu\t%19lu\t%19lu", rdist, e->num_reads, e->num_writes, e->read_bytes, e->write_bytes);
   }
-
-  
-
   
   MAT_PRT_LINE;
-  //  MAT_PRT("%15s\t%20lu\t%20lu\t%19lu\t%19lu", "Total", total_read_access, total_write_access, total_read_bytes, total_write_bytes);
   MAT_PRT("%15s\t%20lu\t%20lu\t%19lu\t%19lu", "Total", stat->num_reads, stat->num_writes, stat->read_bytes, stat->write_bytes);
   MAT_PRT_LINE;
   MAT_PRT("# of instructions: %lu", rd->stat.num_insts);
