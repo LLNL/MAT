@@ -47,24 +47,73 @@ static ssize_t mat_rd_compute_reuse_distance(mat_rd_t *rd, mat_rd_mem_t *mem)
 static void mat_rd_add_stat(mat_rd_t *rd, mat_rd_mem_t *mem)
 {
   vector<mat_rd_mem_t*> *mem_vec;
+  mat_model_stat_t *stat;
+  mat_model_stat_rd_element_t *e;
+    
   ssize_t rdistance = mem->meta.reuse_distance;
+  
+  /* Keep memory access in map for further batch analysis */
   if (rd->rdist_map->find(rdistance) == rd->rdist_map->end()) {
     rd->rdist_map->insert(make_pair(rdistance, new vector<mat_rd_mem_t*>()));
   }
   mem_vec = rd->rdist_map->at(rdistance);
   mem_vec->push_back(mem);
+
+  /* Increment performance numbers */
+  stat = &rd->stat;
+  stat->cycles = mem->meta.cycles;
+  if (stat->rdist_stat_map->find(rdistance) == stat->rdist_stat_map->end()) {
+    e = (mat_model_stat_rd_element_t*)malloc(sizeof(mat_model_stat_rd_element_t));
+    memset(e, 0, sizeof(mat_model_stat_rd_element_t));
+    stat->rdist_stat_map->insert(make_pair(rdistance, e));
+  }
+  e = stat->rdist_stat_map->at(rdistance);
+  if (mem->trace.type == MAT_TRACE_LOAD) {
+    stat->num_reads++;
+    stat->read_bytes += mem->trace.size;
+    e->read_bytes += mem->trace.size;
+    e->num_reads++;
+  } else if (mem->trace.type == MAT_TRACE_STORE) {
+    stat->num_writes++;
+    stat->write_bytes += mem->trace.size;
+    e->write_bytes += mem->trace.size;
+    e->num_writes++;
+  } else {
+    MAT_ERR("No such access type: %d", mem->trace.type);
+  }
+  stat->num_insts += mem->meta.num_insts;
+
+
+  
   return;
 }
 
 mat_rd_t* mat_rd_create(mat_rd_config *config)
 {
   mat_rd_t *rd = NULL;
+  mat_model_stat_t *stat;
   rd = (mat_rd_t*) malloc(sizeof(mat_rd_t));
   rd->config = *config;
-  //  rd->cache_line_size = cache_line_size;
+  memset(&rd->stat, 0, sizeof(mat_model_stat_t));
+  stat = &rd->stat;
+  stat->rdist_stat_map = new map<ssize_t, mat_model_stat_rd_element_t*>();
+
   rd->access_list    = new list<mat_rd_mem_t*>();
   rd->rdist_map = new map<ssize_t, vector<mat_rd_mem_t*>*>();
   return rd;
+}
+
+void mat_model_compute_meta(mat_rd_t *rd,  mat_trace_mem_t *memt, mat_rd_mem_t *m)
+{
+  /* Cache line ID */
+  m->meta.cache_line_id = mat_rd_get_cache_line_id(rd, m->trace.addr);
+  /* Compute reuse distance*/
+  m->meta.reuse_distance   = mat_rd_compute_reuse_distance(rd, m);
+  /* # of instructions including this store or load since the last store or load */
+  m->meta.num_insts = rd->rest_num_insts + memt->num_insts;
+  rd->rest_num_insts = 0;
+  /* # of cycles to complete this memory access */
+  m->meta.cycles = -1;
 }
 
 void mat_rd_mem_access(mat_rd_t *rd,  mat_trace_mem_t *memt)
@@ -76,11 +125,9 @@ void mat_rd_mem_access(mat_rd_t *rd,  mat_trace_mem_t *memt)
   m = (mat_rd_mem_t*)malloc(sizeof(mat_rd_mem_t));
   m->trace = *memt;
 
-  /* Cache line ID */
-  m->meta.cache_line_id = mat_rd_get_cache_line_id(rd, m->trace.addr);
-  /* Compute reuse distance*/
-  m->meta.reuse_distance   = mat_rd_compute_reuse_distance(rd, m);
-  
+  mat_model_compute_meta(rd, memt, m);
+
+  /* Add and Compute statistics */
   mat_rd_add_stat(rd, m);
   
   //  MAT_DBG("addr: %lu size: %lu: dist: %d", m->trace.addr, m->trace.size, reuse_distance);
@@ -94,7 +141,7 @@ void mat_rd_loop(mat_rd_t *rd,  mat_trace_loop_t *loopt)
 
 void mat_rd_bb(mat_rd_t *rd, mat_trace_bb_t *bb)
 {
-  rd->num_insts += bb->size;
+  rd->rest_num_insts = bb->rest_num_insts;
   return;
 }
 
@@ -132,9 +179,13 @@ void mat_rd_input(mat_rd_t *rd, const char* trace_path)
 
 void mat_rd_print(mat_rd_t* rd)
 {
-  map<ssize_t, vector<mat_rd_mem_t*>*>::iterator it, it_end;
-  size_t total_read_access = 0, total_write_access = 0;
-  size_t total_read_bytes  = 0, total_write_bytes  = 0;
+  //  map<ssize_t, vector<mat_rd_mem_t*>*>::iterator it, it_end;
+  //  size_t total_read_access = 0, total_write_access = 0;
+  //  size_t total_read_bytes  = 0, total_write_bytes  = 0;
+  mat_model_stat_t *stat;
+  map<ssize_t, mat_model_stat_rd_element_t*>::iterator it, it_end;
+
+  stat = &rd->stat;
 
 #define MAT_PRT_LINE							\
   do {									\
@@ -148,46 +199,59 @@ void mat_rd_print(mat_rd_t* rd)
 	  "<read(bytes)>", "<write(bytes)>");
   MAT_PRT_LINE;
 
-  for (it = rd->rdist_map->begin(), it_end = rd->rdist_map->end();
+  // for (it = rd->rdist_map->begin(), it_end = rd->rdist_map->end();
+  //      it != it_end;
+  //      it++) {
+  //   vector<mat_rd_mem_t*> *mem_vec;
+  //   ssize_t dist;
+  //   size_t length;
+  //   size_t read_access, write_access;
+  //   size_t read_bytes, write_bytes;
+    
+  //   dist    =  it->first;
+  //   mem_vec = it->second;
+  //   length = mem_vec->size();
+
+  //   read_access = write_access = 0;
+  //   read_bytes  = write_bytes  = 0;
+  //   for (size_t i = 0; i < length; i++) {
+  //     mat_rd_mem_t *m;
+  //     m = mem_vec->at(i);
+  //     if (m->trace.type == MAT_TRACE_LOAD) {
+  // 	read_access++;
+  // 	read_bytes += m->trace.size;	
+  //     } else if (m->trace.type == MAT_TRACE_STORE) {
+  // 	write_access++;
+  // 	write_bytes += m->trace.size;	
+  //     } else {
+  // 	MAT_ERR("No such access type: %d", m->trace.type);
+  //     }
+
+  //   }
+  //   MAT_PRT("%15d\t%20lu\t%20lu\t%19lu\t%19lu", dist, read_access, write_access, read_bytes, write_bytes);
+
+  //   total_read_access  += read_access;
+  //   total_write_access += write_access;
+  //   total_read_bytes   += read_bytes;
+  //   total_write_bytes  += write_bytes;
+  // }
+
+  for (it = stat->rdist_stat_map->begin(), it_end = stat->rdist_stat_map->end();
        it != it_end;
        it++) {
-    vector<mat_rd_mem_t*> *mem_vec;
-    ssize_t dist;
-    size_t length;
-    size_t read_access, write_access;
-    size_t read_bytes, write_bytes;
-    
-    dist    =  it->first;
-    mem_vec = it->second;
-    length = mem_vec->size();
-
-    read_access = write_access = 0;
-    read_bytes  = write_bytes  = 0;
-    for (size_t i = 0; i < length; i++) {
-      mat_rd_mem_t *m;
-      m = mem_vec->at(i);
-      if (m->trace.type == MAT_TRACE_LOAD) {
-	read_access++;
-	read_bytes += m->trace.size;	
-      } else if (m->trace.type == MAT_TRACE_STORE) {
-	write_access++;
-	write_bytes += m->trace.size;	
-      } else {
-	MAT_ERR("No such access type: %d", m->trace.type);
-      }
-
-    }
-    MAT_PRT("%15d\t%20lu\t%20lu\t%19lu\t%19lu", dist, read_access, write_access, read_bytes, write_bytes);
-
-    total_read_access  += read_access;
-    total_write_access += write_access;
-    total_read_bytes   += read_bytes;
-    total_write_bytes  += write_bytes;
+    ssize_t rdist = it->first;
+    mat_model_stat_rd_element_t *e = it->second;
+    MAT_PRT("%15d\t%20lu\t%20lu\t%19lu\t%19lu", rdist, e->num_reads, e->num_writes, e->read_bytes, e->write_bytes);
   }
+
+  
+
+  
   MAT_PRT_LINE;
-  MAT_PRT("%15s\t%20lu\t%20lu\t%19lu\t%19lu", "Total", total_read_access, total_write_access, total_read_bytes, total_write_bytes);
+  //  MAT_PRT("%15s\t%20lu\t%20lu\t%19lu\t%19lu", "Total", total_read_access, total_write_access, total_read_bytes, total_write_bytes);
+  MAT_PRT("%15s\t%20lu\t%20lu\t%19lu\t%19lu", "Total", stat->num_reads, stat->num_writes, stat->read_bytes, stat->write_bytes);
   MAT_PRT_LINE;
-  MAT_PRT("# of instructions: %lu", rd->num_insts);
+  MAT_PRT("# of instructions: %lu", rd->stat.num_insts);
   MAT_PRT_LINE;
 }
 

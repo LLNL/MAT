@@ -19,6 +19,8 @@ typedef struct {
 typedef struct {
   size_t cache_line_id = -1;
   ssize_t reuse_distance = 0;
+  int num_insts = 0;
+  int cycles = 0;
 } mat_model_meta_t;
 
 typedef struct {
@@ -27,10 +29,29 @@ typedef struct {
 } mat_rd_mem_t;
 
 typedef struct {
+  size_t num_reads = 0;
+  size_t num_writes = 0;
+  size_t read_bytes = 0;
+  size_t write_bytes = 0;
+} mat_model_stat_rd_element_t;
+
+
+typedef struct {
+  size_t cycles = 0;
+  size_t num_reads = 0;
+  size_t num_writes = 0;
+  size_t read_bytes = 0;
+  size_t write_bytes = 0;
+  size_t num_insts = 0;
+  map<ssize_t, mat_model_stat_rd_element_t*> *rdist_stat_map;
+} mat_model_stat_t;
+
+typedef struct {
   mat_rd_config config;
+  mat_model_stat_t stat;
   list<mat_rd_mem_t*> *access_list;
   map<ssize_t, vector<mat_rd_mem_t*>*> *rdist_map;
-  size_t num_insts = 0;
+  int rest_num_insts = 0;
 } mat_rd_t;
 
 
