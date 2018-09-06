@@ -1,29 +1,43 @@
-# README #
+# MAT: Mamory Analysis Tool (Alpha version) #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+	Note: This tool is still alpha version.
 
-### What is this repository for? ###
+This tool traces all memory accesses to stack(Static allocation)/heap(Dynamic allocation) on a trace run in a particular hardware and then estimates execution time on given arbitrary hardware configurations for hardware design space exploration.
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+## Dependencies
 
-### How do I get set up? ###
+* GOTCHA (https://github.com/LLNL/GOTCHA)
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+## Quick Start ##
 
-### Contribution guidelines ###
+### 1. Building MAT
 
-* Writing tests
-* Code review
-* Other guidelines
+	$ MAT_DIR=<path to installation directory>
+	$ ./autogen.sh
+	$ ./configure --with-gotcha=<path to GOTCHA directory> --prefix=$MAT_DIR
+	$ make 
+	$ make install
 
-### Who do I talk to? ###
+### 2. Tracing and analysing memory access under MAT
 
-* Repo owner or admin
-* Other community or team contact
+	$ cd test
+	$ mkdir mat_llvm_trace
+	$ ./run.sh #for quick help
+	$ ./run.sh 1 #for tracing simple test code
+	$ ./run.sh 5 ./mat_llvm_trace/*/trace-0.mat #for computing reuse distance
+	$ ./run.sh 6 ./mat_llvm_trace/*/trace-0.mat 0 > trace-0.txt #for printing out memory access in text
+	$ less ./trace-0.txt #for checking memory access in text
+	
+## Trace Format
+### in binary format (trace-0.mat)
+	
+	|trace type(int)|id(size_t)|thread id(int)|memory access type(int)|head address of the buffer(void*)|allocated size for the buffer(size_t)|accessed address(void*)|accessed size in bytes(size_t)|# of instructions executed from the last memory access(int)|
+	
+### in text format (trace-0.txt)
+
+	<id> <accessed address> <offset> <head address> <is_read> <accessed size in bytes> <allocated size for the buffer> <thread id>
+	
+
+### Contact ###
+
+* Kento Sato (kento@llnl.gov)
