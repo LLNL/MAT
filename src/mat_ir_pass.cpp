@@ -88,6 +88,30 @@ void MAT::get_instruction_id(Instruction *I, int *file_id, int *loc_id)
   return;
 }
 
+void MAT::get_line_column(Instruction *I, int *line, int *column)
+{
+  if (const DebugLoc &dbloc = I->getDebugLoc()) {
+    *line   = dbloc.getLine();
+    *column = dbloc.getCol();
+  } else {
+    *line = 0;
+    *column = 0;
+  }
+  return;
+}
+
+int MAT::get_lien_colum_id(Instruction *I)
+{
+  int line = 0, column = 0;
+  if (const DebugLoc &dbloc = I->getDebugLoc()) {
+    line   = dbloc.getLine();
+    column = dbloc.getCol();
+  }
+  return 100000 * line  + column;
+}
+
+
+
 int MAT::get_path(Instruction *I, const char **file_name, const char **dir_name)
 {
   const char *filename, *dirname;
@@ -199,17 +223,7 @@ bool MATFunc::is_memory_access(Instruction &I)
   return false;
 }
 
-void MATFunc::get_line_column(Instruction *I, int *line, int *column)
-{
-  if (const DebugLoc &dbloc = I->getDebugLoc()) {
-    *line   = dbloc.getLine();
-    *column = dbloc.getCol();
-  } else {
-    *line = 0;
-    *column = 0;
-  }
-  return;
-}
+
 
 int MATFunc::analyse_data_dependency(Function &F, mat_ir_profile_t *prof)
 {

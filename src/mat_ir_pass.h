@@ -41,6 +41,8 @@ class MAT
   void get_instruction_id(Instruction *I, int *file_id, int *loc_id);
   Constant* get_control_func(Type *type);
   int get_path(Instruction *I, const char **file_name, const char **dir_name);
+  void get_line_column(Instruction *I, int *line, int *column);
+  int get_lien_colum_id(Instruction *I)
   int insert_func(Instruction *I, BasicBlock *BB, int offset, int control, Value *type, Value* addr, Value* size, Value* num_insts);
 };
 
@@ -60,7 +62,7 @@ class MATFunc: public MAT, public FunctionPass
  private:
   int instrument_init_and_finalize(Function &F);
   bool is_memory_access(Instruction &I);
-  void get_line_column(Instruction *I, int *line, int *column);
+
   int analyse_data_dependency(Function &F, mat_ir_profile_t *prof);
   int instrument_load_store(Function &F, BasicBlock &BB, Instruction &I, mat_ir_profile_t *profile);  
   /* Outer Handlers */
