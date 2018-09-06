@@ -40,4 +40,4 @@ This tool traces all memory accesses to stack(Static allocation)/heap(Dynamic al
 
 ### Contact ###
 
-* Kento Sato <kento@llnl.gov>
+* Kento Sato (kento@llnl.gov)
