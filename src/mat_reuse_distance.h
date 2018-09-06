@@ -7,14 +7,23 @@
 #include <mat.h>
 
 #include <map>
+#include <unordered_map>
 #include <list>
 #include <vector>
 
 using namespace std;
 
 typedef struct {
+  int num_levels = 0;
+  int *latencies = NULL;
+  size_t *sizes_bytes  = NULL;
+} mat_model_config_mem_t;
+
+typedef struct {
+  double freqency_GHz = 0;
   size_t cache_line_size = 0;
-} mat_rd_config;
+  mat_model_config_mem_t mem;
+} mat_rd_config_t;
 
 typedef struct {
   size_t cache_line_id = -1;
@@ -47,19 +56,21 @@ typedef struct {
 } mat_model_stat_t;
 
 typedef struct {
-  mat_rd_config config;
-  mat_model_stat_t stat;
+  mat_rd_config_t config; /* Configuration */
+  mat_model_stat_t stat; /* Stat data printed out at the end */
+  /*Other temporal data*/
   list<mat_rd_mem_t*> *access_list;
-  map<ssize_t, vector<mat_rd_mem_t*>*> *rdist_map;
   int rest_num_insts = 0;
+  list<mat_rd_mem_t*> *recent_access_list;
+  /*This is not used */ map<ssize_t, vector<mat_rd_mem_t*>*> *rdist_map;
 } mat_rd_t;
 
 
-mat_rd_t* mat_rd_create(mat_rd_config *config);
+mat_rd_t* mat_rd_create(mat_rd_config_t *config);
 void mat_rd_input(mat_rd_t *rd, const char* trace_path);
 
-void mat_rd_mem_access(mat_rd_t *rd,  mat_trace_mem_t *memt);
-void mat_rd_loop(mat_rd_t *rd,  mat_trace_loop_t *loopt);
+//void mat_rd_mem_access(mat_rd_t *rd,  mat_trace_mem_t *memt);
+//void mat_rd_loop(mat_rd_t *rd,  mat_trace_loop_t *loopt);
 
 void mat_rd_print(mat_rd_t* rd);
 void mat_rd_output(mat_rd_t* rd);

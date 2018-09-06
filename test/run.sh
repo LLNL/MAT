@@ -42,7 +42,7 @@ case $1 in
 	time -p ../src/mat-rd $2
 	;;
     6) ## MAT binary to text
-	time -p ../src/mat-b2t $2
+	time -p ../src/mat-b2t $2 $3
 	;;
     7) ## MAT mgraph
 	touch .empty

@@ -7,7 +7,7 @@
 int main(int argc, char** argv)
 {
   mat_rd_t *rd;
-  mat_rd_config config;
+  mat_rd_config_t config;
   if (argc <= 1) {
     fprintf(stderr, "%s <trace file path>\n", argv[0]);
     exit(0);

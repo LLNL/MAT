@@ -32,6 +32,7 @@
 //#define N (10 * 1000 * 1000)
 #define N (1000)
 
+volatile int a = 1, b = 2;
 int main(int argc, char** argv)
 {
   BEGIN;
@@ -64,6 +65,7 @@ int main(int argc, char** argv)
   free((void*)h);
   
   fprintf(stderr, "done\n");
+  
   END;  
   return 0;
 }

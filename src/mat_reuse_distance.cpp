@@ -51,7 +51,7 @@ static void mat_rd_add_stat(mat_rd_t *rd, mat_rd_mem_t *mem)
   mat_model_stat_rd_element_t *e;
     
   ssize_t rdistance = mem->meta.reuse_distance;
-  
+
   /* Keep memory access in map for further batch analysis */
   if (rd->rdist_map->find(rdistance) == rd->rdist_map->end()) {
     rd->rdist_map->insert(make_pair(rdistance, new vector<mat_rd_mem_t*>()));
@@ -88,7 +88,7 @@ static void mat_rd_add_stat(mat_rd_t *rd, mat_rd_mem_t *mem)
   return;
 }
 
-mat_rd_t* mat_rd_create(mat_rd_config *config)
+mat_rd_t* mat_rd_create(mat_rd_config_t *config)
 {
   mat_rd_t *rd = NULL;
   mat_model_stat_t *stat;
@@ -99,24 +99,60 @@ mat_rd_t* mat_rd_create(mat_rd_config *config)
   stat->rdist_stat_map = new map<ssize_t, mat_model_stat_rd_element_t*>();
 
   rd->access_list    = new list<mat_rd_mem_t*>();
+  rd->recent_access_list    = new list<mat_rd_mem_t*>();
   rd->rdist_map = new map<ssize_t, vector<mat_rd_mem_t*>*>();
   return rd;
 }
 
-void mat_model_compute_meta(mat_rd_t *rd,  mat_trace_mem_t *memt, mat_rd_mem_t *m)
+static int mat_model_get_memory_access_cycles(mat_rd_t *rd, mat_rd_mem_t *m)
+{
+  mat_rd_config_t *config;
+  int level = 0;
+  config = &rd->config;
+
+  if (m->meta.reuse_distance != -1) {
+    for (level = 0; level < config->mem.num_levels; level++) {
+      if (m->meta.reuse_distance * config->cache_line_size < config->mem.sizes_bytes[level]) break;
+    }
+  } else {
+    level = config->mem.num_levels;
+  }
+  return config->mem.latencies[level];
+}
+
+static int  mat_model_compute_cycles(mat_rd_t *rd, mat_rd_mem_t *m)
+{
+  mat_rd_config_t *config;
+  size_t cycles;
+
+  list<mat_rd_mem_t*>::iterator it, it_end;
+  // for (it = rd->recent_access_list.begin(),
+  //      it_end =)
+  
+  
+  config = &rd->config;
+  
+
+  cycles = mat_model_get_memory_access_cycles(rd, m);
+  //  config->mem.latencies[config->mem.num_levels];
+  return 0;
+}
+
+static void mat_model_compute_meta(mat_rd_t *rd, mat_rd_mem_t *m)
 {
   /* Cache line ID */
   m->meta.cache_line_id = mat_rd_get_cache_line_id(rd, m->trace.addr);
   /* Compute reuse distance*/
   m->meta.reuse_distance   = mat_rd_compute_reuse_distance(rd, m);
   /* # of instructions including this store or load since the last store or load */
-  m->meta.num_insts = rd->rest_num_insts + memt->num_insts;
+  m->meta.num_insts = rd->rest_num_insts + m->trace.num_insts;
   rd->rest_num_insts = 0;
   /* # of cycles to complete this memory access */
-  m->meta.cycles = -1;
+  m->meta.cycles = mat_model_compute_cycles(rd, m);
+  
 }
 
-void mat_rd_mem_access(mat_rd_t *rd,  mat_trace_mem_t *memt)
+static void mat_rd_mem_access(mat_rd_t *rd,  mat_trace_mem_t *memt)
 {
   mat_rd_mem_t *m;
   ssize_t reuse_distance;
@@ -125,7 +161,7 @@ void mat_rd_mem_access(mat_rd_t *rd,  mat_trace_mem_t *memt)
   m = (mat_rd_mem_t*)malloc(sizeof(mat_rd_mem_t));
   m->trace = *memt;
 
-  mat_model_compute_meta(rd, memt, m);
+  mat_model_compute_meta(rd, m);
 
   /* Add and Compute statistics */
   mat_rd_add_stat(rd, m);
@@ -134,12 +170,12 @@ void mat_rd_mem_access(mat_rd_t *rd,  mat_trace_mem_t *memt)
   return;
 }
 
-void mat_rd_loop(mat_rd_t *rd,  mat_trace_loop_t *loopt)
+static void mat_rd_loop(mat_rd_t *rd,  mat_trace_loop_t *loopt)
 {
   
 }
 
-void mat_rd_bb(mat_rd_t *rd, mat_trace_bb_t *bb)
+static void mat_rd_bb(mat_rd_t *rd, mat_trace_bb_t *bb)
 {
   rd->rest_num_insts = bb->rest_num_insts;
   return;

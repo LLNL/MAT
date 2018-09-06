@@ -7,7 +7,7 @@
 #include "llvm/IR/LLVMContext.h"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
-//#include <llvm/IR/InstIterator.h>
+#include <llvm/IR/InstIterator.h>
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Type.h"
@@ -192,10 +192,63 @@ int MATFunc::instrument_load_store(Function &F, BasicBlock &BB, Instruction &I, 
   return modified_counter;
 }
 
+bool MATFunc::is_memory_access(Instruction &I)
+{
+  if (dyn_cast<StoreInst>(&I)) return true;
+  if (dyn_cast<LoadInst>(&I)) return true;
+  return false;
+}
+
+void MATFunc::get_line_column(Instruction *I, int *line, int *column)
+{
+  if (const DebugLoc &dbloc = I->getDebugLoc()) {
+    *line   = dbloc.getLine();
+    *column = dbloc.getCol();
+  } else {
+    *line = 0;
+    *column = 0;
+  }
+  return;
+}
+
+int MATFunc::analyse_data_dependency(Function &F, mat_ir_profile_t *prof)
+{
+  DependenceInfo *depinfo;
+  int line_I, line_J;
+  int col_I, col_J;  
+  depinfo = &getAnalysis<DependenceAnalysisWrapperPass>().getDI();
+  // check dependencies between each pair of instructions
+  for (inst_iterator Iit = inst_begin(F), Iit_end = inst_end(F); Iit != Iit_end; Iit++) {
+    Instruction &I = *Iit;
+    for (inst_iterator Jit = Iit; Jit != Iit_end; Jit++) {
+      Instruction &J = *Jit;
+      if (!(is_memory_access(I) && is_memory_access(J))) continue;
+      unique_ptr<Dependence> infoPtr;
+      infoPtr = depinfo->depends(&I, &J, true);
+      Dependence *dep = infoPtr.get();
+      
+      if (dep != NULL && dep->isOrdered()) {
+	if (!dep->isLoopIndependent()) errs() << "[L]";
+	if (dep->isConfused()) errs() << "[C]";
+	dep->getDst()->print(errs(), false);
+	errs() << "   ---> ";
+	dep->getSrc()->print(errs(), false);
+	errs() << "\n";
+	get_line_column(dep->getDst(), &line_I, &col_I);
+	get_line_column(dep->getSrc(), &line_J, &col_J);
+	MAT_DBG("%d:%d --> %d:%d", line_I, col_I, line_J, col_J);
+	
+      }
+    }
+  }
+  return 0;
+}
+
 int MATFunc::handle_function(Function &F, mat_ir_profile_t *profile)
 {
   int modified_counter = 0;
   modified_counter += instrument_init_and_finalize(F);
+  modified_counter += analyse_data_dependency(F, profile);
   return modified_counter;
 }
 
@@ -268,6 +321,8 @@ bool MATFunc::runOnFunction(Function &F)
 
 void MATFunc::getAnalysisUsage(AnalysisUsage &AU) const
 {
+  AU.addRequired<DependenceAnalysisWrapperPass>();
+  //  AU.setPreservesAll();
 }
 
 /* ===================================================== */
@@ -360,6 +415,7 @@ void MATLoop::getAnalysisUsage(AnalysisUsage &AU) const
 
 static void registerMAT(const PassManagerBuilder &, legacy::PassManagerBase &PM)
 {
+  PM.add(new DependenceAnalysisWrapperPass);
   PM.add(new MATFunc);
   PM.add(new MATLoop);
 }

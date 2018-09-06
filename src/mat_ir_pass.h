@@ -35,7 +35,8 @@ class MAT
   LLVMContext *MAT_CTX;
   DataLayout *MAT_DL;
   unordered_map<string, Constant*> mat_func_umap;
-  
+
+
   void init_instrumented_functions(Module *M);
   void get_instruction_id(Instruction *I, int *file_id, int *loc_id);
   Constant* get_control_func(Type *type);
@@ -58,13 +59,16 @@ class MATFunc: public MAT, public FunctionPass
   
  private:
   int instrument_init_and_finalize(Function &F);
-
+  bool is_memory_access(Instruction &I);
+  void get_line_column(Instruction *I, int *line, int *column);
+  int analyse_data_dependency(Function &F, mat_ir_profile_t *prof);
+  int instrument_load_store(Function &F, BasicBlock &BB, Instruction &I, mat_ir_profile_t *profile);  
   /* Outer Handlers */
   int handle_function(Function &F, mat_ir_profile_t *profile);
   int handle_basicblock(Function &F, BasicBlock &BB, mat_ir_profile_t *profile);
   int handle_basicblock_postprocess(Function &F, BasicBlock &BB, mat_ir_profile_t *profile);
   int handle_instruction(Function &F, BasicBlock &BB, Instruction &I, mat_ir_profile_t *profile);
-  int instrument_load_store(Function &F, BasicBlock &BB, Instruction &I, mat_ir_profile_t *profile);
+
   
 };
 
