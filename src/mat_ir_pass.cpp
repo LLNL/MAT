@@ -29,11 +29,15 @@
 #include "mat_ir_pass.h"
 #include "mat.h"
 #include "mat_util.h"
+#include "mat_io.h"
 
 #define MAT_VERSION (1)
 
 int MAT::location_id = 0;
-size_t MAT::path_name_id = 0;
+int MAT::file_local_id = 0;
+int MAT::path_name_id = 0;
+int MAT::instruction_id = 1;
+
 void MAT::init_instrumented_functions(Module *M)
 {
   MAT_ERR("This is not used");
@@ -71,7 +75,7 @@ Constant*  MAT::get_control_func(Type *type)
   return func;
 }
 
-void MAT::get_instruction_id(Instruction *I, int *file_id, int *loc_id)
+int MAT::get_filepath_hash(Instruction *I)
 {
   const char *file_name, *dir_name;
   string path_name;
@@ -83,7 +87,70 @@ void MAT::get_instruction_id(Instruction *I, int *file_id, int *loc_id)
       if (!path_name_id) path_name_id++;
     }
   }
-  *file_id = path_name_id;
+  return path_name_id;
+}
+
+
+  
+int MAT::get_path(Instruction *I, const char **file_name, const char **dir_name)
+{
+  const char *filename, *dirname;
+  if (const DebugLoc &dbloc = I->getDebugLoc()) {
+    if (DIScope *discope = dyn_cast<DIScope>(dbloc.getScope())) {
+      filename = discope->getFilename().data();
+      dirname  = discope->getDirectory().data();
+    } else {
+      MAT_ERR("Third operand of DebugLoc is not DIScope");
+    }
+    *file_name = filename;
+    *dir_name  = dirname;
+    return 1;
+  }
+  *file_name = NULL;
+  *dir_name = NULL;
+  return 0;
+}
+
+int MAT::insert_func(Instruction *I, BasicBlock *BB, int offset, int control,
+		     Value* type, Value* addr, Value* size, Value* num_insts)
+{
+  int file_id, loc_id;
+  vector<Value*> arg_vec;
+  IRBuilder<> builder(I);
+  Constant* func;
+  Type *addr_type;
+  CastInst *addr_cast;
+  
+  builder.SetInsertPoint(BB, (offset)? ++builder.GetInsertPoint():builder.GetInsertPoint());
+  //  func = mat_func_umap.at(MAT_CONTROL_STR);
+  addr_type = (!addr)? MAT_INT64PTRTY:addr->getType();
+  func = get_control_func(addr_type);
+  
+  arg_vec.push_back(MAT_CONST_INT32TY(control));
+  get_uniq_instruction_id(I, &file_id, &loc_id);
+  arg_vec.push_back(MAT_CONST_INT32TY(file_id));
+  arg_vec.push_back(MAT_CONST_INT32TY(loc_id));
+  if (!type) type = MAT_CONST_INT32TY(0);
+  arg_vec.push_back(type);
+  if (!addr) addr = MAT_CONST_INT64PTRTY_NULL;
+  arg_vec.push_back(addr);
+  if (!size) size = MAT_CONST_INT64TY(0);
+  arg_vec.push_back(size);
+  if (!num_insts) num_insts = MAT_CONST_INT32TY(0);
+  arg_vec.push_back(num_insts);
+  
+  builder.CreateCall(func, arg_vec);
+  //  addr->mutateType(tmp_type);
+  //MAT_DBG("inserted !!");
+  return 1;
+}
+
+
+void MAT::get_uniq_instruction_id(Instruction *I, int *file_id, int *loc_id)
+{
+  const char *file_name, *dir_name;
+  string path_name;
+  *file_id = get_filepath_hash(I);
   *loc_id = location_id++;
   return;
 }
@@ -110,68 +177,30 @@ int MAT::get_lien_colum_id(Instruction *I)
   return 100000 * line  + column;
 }
 
-
-
-int MAT::get_path(Instruction *I, const char **file_name, const char **dir_name)
-{
-  const char *filename, *dirname;
-  if (const DebugLoc &dbloc = I->getDebugLoc()) {
-    if (DIScope *discope = dyn_cast<DIScope>(dbloc.getScope())) {
-      filename = discope->getFilename().data();
-      dirname  = discope->getDirectory().data();
-    } else {
-      MAT_ERR("Third operand of DebugLoc is not DIScope");
-    }
-    *file_name = filename;
-    *dir_name  = dirname;
-    return 1;
-  }
-  *file_name = NULL;
-  *dir_name = NULL;
-  return 0;
-}
-
-
-int MAT::insert_func(Instruction *I, BasicBlock *BB, int offset, int control,
-		     Value* type, Value* addr, Value* size, Value* num_insts)
-{
-  int file_id, loc_id;
-  vector<Value*> arg_vec;
-  IRBuilder<> builder(I);
-  Constant* func;
-  Type *addr_type;
-  CastInst *addr_cast;
-  
-  builder.SetInsertPoint(BB, (offset)? ++builder.GetInsertPoint():builder.GetInsertPoint());
-  //  func = mat_func_umap.at(MAT_CONTROL_STR);
-  addr_type = (!addr)? MAT_INT64PTRTY:addr->getType();
-  func = get_control_func(addr_type);
-  
-  arg_vec.push_back(MAT_CONST_INT32TY(control));
-  get_instruction_id(I, &file_id, &loc_id);
-  arg_vec.push_back(MAT_CONST_INT32TY(file_id));
-  arg_vec.push_back(MAT_CONST_INT32TY(loc_id));
-  if (!type) type = MAT_CONST_INT32TY(0);
-  arg_vec.push_back(type);
-  if (!addr) addr = MAT_CONST_INT64PTRTY_NULL;
-  arg_vec.push_back(addr);
-  if (!size) size = MAT_CONST_INT64TY(0);
-  arg_vec.push_back(size);
-  if (!num_insts) num_insts = MAT_CONST_INT32TY(0);
-  arg_vec.push_back(num_insts);
-  
-  builder.CreateCall(func, arg_vec);
-  //  addr->mutateType(tmp_type);
-  //MAT_DBG("inserted !!");
-  return 1;
-}
-
 /* ===================================================== */
 /*                      MATFunc                          */
 /* ===================================================== */
 
 
 char MATFunc::ID = 0;
+
+
+MATFunc::MATFunc()
+  : MAT()
+  , FunctionPass(ID)
+{
+  char* env;
+  int env_int;
+
+  if (NULL != (env = getenv(MAT_ENV_DEP_FILE))) {
+    data_dependency_dir = env;
+  } else {
+    data_dependency_dir = ".";
+  }
+
+  inst_ptr_to_id = new unordered_map<Instruction*, size_t>();
+  data_dependency_umap = new unordered_map<size_t, vector<size_t>*>();
+}
 
 int MATFunc::instrument_init_and_finalize(Function &F)
 {
@@ -223,13 +252,20 @@ bool MATFunc::is_memory_access(Instruction &I)
   return false;
 }
 
-
+void MATFunc::add_data_dependency(size_t src, size_t dst)
+{
+  vector<size_t> *src_vec;
+  if (data_dependency_umap->find(dst) == data_dependency_umap->end()) {
+    data_dependency_umap->insert(make_pair(dst, new vector<size_t>()));
+  }
+  src_vec = data_dependency_umap->at(dst);
+  src_vec->push_back(src);
+  return;
+}
 
 int MATFunc::analyse_data_dependency(Function &F, mat_ir_profile_t *prof)
 {
   DependenceInfo *depinfo;
-  int line_I, line_J;
-  int col_I, col_J;  
   depinfo = &getAnalysis<DependenceAnalysisWrapperPass>().getDI();
   // check dependencies between each pair of instructions
   for (inst_iterator Iit = inst_begin(F), Iit_end = inst_end(F); Iit != Iit_end; Iit++) {
@@ -238,20 +274,29 @@ int MATFunc::analyse_data_dependency(Function &F, mat_ir_profile_t *prof)
       Instruction &J = *Jit;
       if (!(is_memory_access(I) && is_memory_access(J))) continue;
       unique_ptr<Dependence> infoPtr;
+      /* &I == dep->getSrc(), &J == dep->getDst() */
+      /* Src(&I) happens before Dst(&J) */
       infoPtr = depinfo->depends(&I, &J, true);
       Dependence *dep = infoPtr.get();
       
       if (dep != NULL && dep->isOrdered()) {
-	if (!dep->isLoopIndependent()) errs() << "[L]";
-	if (dep->isConfused()) errs() << "[C]";
-	dep->getDst()->print(errs(), false);
-	errs() << "   ---> ";
-	dep->getSrc()->print(errs(), false);
-	errs() << "\n";
-	get_line_column(dep->getDst(), &line_I, &col_I);
-	get_line_column(dep->getSrc(), &line_J, &col_J);
-	MAT_DBG("%d:%d --> %d:%d", line_I, col_I, line_J, col_J);
-	
+	//	int line_I, line_J;
+	//	int col_I, col_J;  
+	//if (!dep->isLoopIndependent()) errs() << "[L]";
+	//if (dep->isConfused()) errs() << "[C]";
+	//	dep->getDst()->print(errs(), false); 
+	//	errs() << "   ---> ";
+	//	dep->getSrc()->print(errs(), false);
+	//	errs() << "\n";
+	// MAT_DBG("I: %p, Src: %p, J: %p, Dst: %p",
+	// 	&I, dep->getSrc(), &J, dep->getDst()
+	// 	);
+	add_data_dependency(
+			    get_global_instruction_id(dep->getSrc()),
+			    get_global_instruction_id(dep->getDst())
+			    );
+
+
       }
     }
   }
@@ -261,6 +306,7 @@ int MATFunc::analyse_data_dependency(Function &F, mat_ir_profile_t *prof)
 int MATFunc::handle_function(Function &F, mat_ir_profile_t *profile)
 {
   int modified_counter = 0;
+  assign_id_to_instructions(F);
   modified_counter += instrument_init_and_finalize(F);
   modified_counter += analyse_data_dependency(F, profile);
   return modified_counter;
@@ -304,7 +350,6 @@ int MATFunc::handle_instruction(Function &F, BasicBlock &BB, Instruction &I, mat
   return modified_counter;
 }
 
-
 bool MATFunc::doInitialization(Module &M)
 {
   MAT_M   = &M;
@@ -312,15 +357,64 @@ bool MATFunc::doInitialization(Module &M)
   MAT_DL  = new DataLayout(MAT_M);
   //  init_instrumented_functions(&M);
 
+  //  const string &file_name = MAT_M->getSourceFileName();
+  //  const string &file_name = MAT_M->getModuleIdentifier();
+
   return true;
+}
+
+bool MATFunc::doFinalization(Module &M)
+{
+  FILE* fd;
+  const string &file_name = MAT_M->getSourceFileName();
+  const char* file_name_c = file_name.c_str();
+  char path[PATH_MAX];
+  
+  /* Dump dependency files*/
+  sprintf(path, "%s/%s.mdep", data_dependency_dir, file_name_c);
+  fd = mat_io_fopen(path, "wb");
+  for (pair<size_t, vector<size_t>*> e: *data_dependency_umap) {
+    mat_io_fwrite(&e.first, sizeof(size_t), 1, fd);
+    mat_io_fwrite(&e.second->front(), sizeof(size_t), e.second->size(), fd);
+  }
+  mat_io_fclose(fd);
+  
+  return true;
+}
+
+size_t MATFunc::get_global_instruction_id(Instruction *I)
+{  
+  if (inst_ptr_to_id->find(I) == inst_ptr_to_id->end()) {
+    MAT_ERR("No such instruction pointer");
+    I->print(errs(), false);
+  }
+  return inst_ptr_to_id->at(I);
+}
+
+void MATFunc::assign_id_to_instructions(Function &F)
+{
+  int file_id = 0;
+  size_t id;
+  for (BasicBlock &BB : F) {
+    for (Instruction &I : BB) {
+      if (file_id == 0) {
+	file_id  = get_filepath_hash(&I);
+	id = file_id;
+	id = id << 32;
+      }
+      inst_ptr_to_id->insert(make_pair(&I, id + instruction_id++));
+    }
+  }
+  return;
 }
 
 bool MATFunc::runOnFunction(Function &F)
 {
   int modified_counter = 0;
   mat_ir_profile_t profile;
-  memset(&profile, 0, sizeof(mat_ir_profile_t));
   
+
+  memset(&profile, 0, sizeof(mat_ir_profile_t));
   modified_counter += handle_function(F, &profile);
   for (BasicBlock &BB : F) {
     modified_counter += handle_basicblock(F, BB, &profile);
