@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "llvm/Pass.h"
 #include <llvm/IR/Module.h>
@@ -202,7 +204,7 @@ MATFunc::MATFunc()
   if (NULL != (env = getenv(MAT_ENV_DEP_FILE))) {
     data_dependency_dir = env;
   } else {
-    data_dependency_dir = ".";
+    data_dependency_dir = ".mat";
   }
 
   inst_ptr_to_id = new unordered_map<Instruction*, size_t>();
@@ -373,11 +375,15 @@ bool MATFunc::doInitialization(Module &M)
 bool MATFunc::doFinalization(Module &M)
 {
   FILE* fd;
+  int status;
   const string &file_name = MAT_M->getSourceFileName();
   const char* file_name_c = file_name.c_str();
   char path[PATH_MAX];
   
   /* Dump dependency files*/
+  if (0 != (status = mkdir(data_dependency_dir, S_IRWXU))) {
+    //    MAT_ERR("Failed to create directory: %s", data_dependency_dir);
+  }
   sprintf(path, "%s/%s.mdep", data_dependency_dir, file_name_c);
   fd = mat_io_fopen(path, "wb");
   for (pair<size_t, vector<size_t>*> e: *data_dependency_umap) {

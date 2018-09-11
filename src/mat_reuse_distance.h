@@ -22,6 +22,7 @@ typedef struct {
 typedef struct {
   double freqency_GHz = 0;
   size_t cache_line_size = 0;
+  char* data_dependency_dir = NULL;
   mat_model_config_mem_t mem;
 } mat_rd_config_t;
 

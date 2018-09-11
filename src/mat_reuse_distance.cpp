@@ -225,7 +225,7 @@ void mat_rd_print(mat_rd_t* rd)
   } while(0);
 
   MAT_PRT_LINE;
-  MAT_PRT("%15s\t%20s\t%20s\t%19s\t%19s",
+  MAT_PRT("%15s%20s%20s%19s%19s",
 	  "<reuse distance>",
 	  "<# of read>", "<# of write>" ,
 	  "<read(bytes)>", "<write(bytes)>");
@@ -236,11 +236,15 @@ void mat_rd_print(mat_rd_t* rd)
        it++) {
     ssize_t rdist = it->first;
     mat_model_stat_rd_element_t *e = it->second;
-    MAT_PRT("%15d\t%20lu\t%20lu\t%19lu\t%19lu", rdist, e->num_reads, e->num_writes, e->read_bytes, e->write_bytes);
+    if (rdist == -1) {
+      MAT_PRT("%15s%20lu%20lu%19lu%19lu", "(first-touch)", e->num_reads, e->num_writes, e->read_bytes, e->write_bytes);
+    } else {
+      MAT_PRT("%15d%20lu%20lu%19lu%19lu", rdist, e->num_reads, e->num_writes, e->read_bytes, e->write_bytes);
+    }
   }
   
   MAT_PRT_LINE;
-  MAT_PRT("%15s\t%20lu\t%20lu\t%19lu\t%19lu", "Total", stat->num_reads, stat->num_writes, stat->read_bytes, stat->write_bytes);
+  MAT_PRT("%15s%20lu%20lu%19lu%19lu", "Total", stat->num_reads, stat->num_writes, stat->read_bytes, stat->write_bytes);
   MAT_PRT_LINE;
   MAT_PRT("# of instructions: %lu", rd->stat.num_insts);
   MAT_PRT_LINE;

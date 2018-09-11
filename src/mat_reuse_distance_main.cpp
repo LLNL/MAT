@@ -21,6 +21,7 @@ int main(int argc, char** argv)
   
   config.freqency_GHz = 2.4;
   config.cache_line_size = 64;
+
   config.mem.num_levels = NUM_LEVELS;
   config.mem.latencies = latencies;
   config.mem.sizes_bytes = sizes_bytes;
