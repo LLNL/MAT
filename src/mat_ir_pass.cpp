@@ -64,8 +64,7 @@ Constant*  MAT::get_control_func(Type *type)
   func =  MAT_M->getOrInsertFunction(MAT_CONTROL_STR,
 				     Type::getVoidTy(ctx),  /* return */
 				     Type::getInt32Ty(ctx), /* control */
-				     Type::getInt32Ty(ctx), /* file_id */
-				     Type::getInt32Ty(ctx), /* loc_id */
+				     Type::getInt64Ty(ctx), /* global_id */
 				     Type::getInt32Ty(ctx), /* type */
 				     type,                  /* addr */
 				     Type::getInt64Ty(ctx), /* size_t */
@@ -90,7 +89,14 @@ int MAT::get_filepath_hash(Instruction *I)
   return path_name_id;
 }
 
-
+size_t MAT::get_global_instruction_id(Instruction *I)
+{  
+  if (inst_ptr_to_id->find(I) == inst_ptr_to_id->end()) {
+    MAT_ERR("No such instruction pointer");
+    I->print(errs(), false);
+  }
+  return inst_ptr_to_id->at(I);
+}
   
 int MAT::get_path(Instruction *I, const char **file_name, const char **dir_name)
 {
@@ -114,12 +120,11 @@ int MAT::get_path(Instruction *I, const char **file_name, const char **dir_name)
 int MAT::insert_func(Instruction *I, BasicBlock *BB, int offset, int control,
 		     Value* type, Value* addr, Value* size, Value* num_insts)
 {
-  int file_id, loc_id;
   vector<Value*> arg_vec;
   IRBuilder<> builder(I);
   Constant* func;
   Type *addr_type;
-  CastInst *addr_cast;
+  size_t global_id;
   
   builder.SetInsertPoint(BB, (offset)? ++builder.GetInsertPoint():builder.GetInsertPoint());
   //  func = mat_func_umap.at(MAT_CONTROL_STR);
@@ -127,9 +132,13 @@ int MAT::insert_func(Instruction *I, BasicBlock *BB, int offset, int control,
   func = get_control_func(addr_type);
   
   arg_vec.push_back(MAT_CONST_INT32TY(control));
-  get_uniq_instruction_id(I, &file_id, &loc_id);
-  arg_vec.push_back(MAT_CONST_INT32TY(file_id));
-  arg_vec.push_back(MAT_CONST_INT32TY(loc_id));
+
+  //  get_uniq_instruction_id(I, &file_id, &loc_id);
+  //  arg_vec.push_back(MAT_CONST_INT32TY(file_id));
+  //  arg_vec.push_back(MAT_CONST_INT32TY(loc_id));
+  global_id = get_global_instruction_id(I);
+  arg_vec.push_back(MAT_CONST_INT64TY(global_id));
+  
   if (!type) type = MAT_CONST_INT32TY(0);
   arg_vec.push_back(type);
   if (!addr) addr = MAT_CONST_INT64PTRTY_NULL;
@@ -148,8 +157,6 @@ int MAT::insert_func(Instruction *I, BasicBlock *BB, int offset, int control,
 
 void MAT::get_uniq_instruction_id(Instruction *I, int *file_id, int *loc_id)
 {
-  const char *file_name, *dir_name;
-  string path_name;
   *file_id = get_filepath_hash(I);
   *loc_id = location_id++;
   return;
@@ -382,14 +389,6 @@ bool MATFunc::doFinalization(Module &M)
   return true;
 }
 
-size_t MATFunc::get_global_instruction_id(Instruction *I)
-{  
-  if (inst_ptr_to_id->find(I) == inst_ptr_to_id->end()) {
-    MAT_ERR("No such instruction pointer");
-    I->print(errs(), false);
-  }
-  return inst_ptr_to_id->at(I);
-}
 
 void MATFunc::assign_id_to_instructions(Function &F)
 {

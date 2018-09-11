@@ -43,11 +43,12 @@ class MAT
   LLVMContext *MAT_CTX;
   DataLayout *MAT_DL;
   static int instruction_id;
-  
+  unordered_map<Instruction*, size_t> *inst_ptr_to_id;
   unordered_map<string, Constant*> mat_func_umap;
 
   void init_instrumented_functions(Module *M);
   int get_filepath_hash(Instruction *I);
+  size_t get_global_instruction_id(Instruction *I);
   void get_uniq_instruction_id(Instruction *I, int *file_id, int *loc_id);
   Constant* get_control_func(Type *type);
   int get_path(Instruction *I, const char **file_name, const char **dir_name);
@@ -74,13 +75,12 @@ class MATFunc: public MAT, public FunctionPass
   
  private:
   char* data_dependency_dir;
-  unordered_map<Instruction*, size_t> *inst_ptr_to_id;
   unordered_map<size_t, vector<size_t>*> *data_dependency_umap;
   
   int instrument_init_and_finalize(Function &F);
   bool is_memory_access(Instruction &I);
 
-  size_t get_global_instruction_id(Instruction *I);
+
   void add_data_dependency(size_t src, size_t dst);
   int analyse_data_dependency(Function &F, mat_ir_profile_t *prof);
   void assign_id_to_instructions(Function &F);
