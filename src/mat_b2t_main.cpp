@@ -36,7 +36,7 @@ static void mat_b2t_print_mem_trace(size_t id, int tid, mat_trace_mem_t *mtrace)
   if (b2t_conf.exclude_stack && mtrace->head_addr == 0) return;
 
   
-  head_addr = (mtrace->head_addr == 0)? id:(size_t)mtrace->head_addr;
+  head_addr = (mtrace->head_addr == 0)? 0:(size_t)mtrace->head_addr;
   printf("%lu %lu %lu %lu %d %lu %lu %d\n",
 	 id,
 	 (unsigned long)mtrace->addr,
