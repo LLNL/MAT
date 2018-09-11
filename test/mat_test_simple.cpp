@@ -29,7 +29,8 @@
 #define END
 #endif
 
-#define N (10 * 1000 * 1000)
+//#define N (10 * 1000 * 1000)
+#define N (1000)
 
 int main(int argc, char** argv)
 {
