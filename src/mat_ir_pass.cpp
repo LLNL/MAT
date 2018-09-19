@@ -52,8 +52,7 @@ void MAT::init_instrumented_functions(Module *M)
 							   Type::getInt32Ty(ctx),
 							   Type::getInt32Ty(ctx),
 							   Type::getInt64PtrTy(ctx),
-							   Type::getInt64Ty(ctx),
-							   NULL);
+							   Type::getInt64Ty(ctx));
   return;
 }
 
@@ -70,8 +69,7 @@ Constant*  MAT::get_control_func(Type *type)
 				     Type::getInt32Ty(ctx), /* type */
 				     type,                  /* addr */
 				     Type::getInt64Ty(ctx), /* size_t */
-				     Type::getInt32Ty(ctx), /* num_insts */
-				     NULL);
+				     Type::getInt32Ty(ctx)); /* num_insts */
   
   return func;
 }
