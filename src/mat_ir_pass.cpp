@@ -69,7 +69,12 @@ Constant*  MAT::get_control_func(Type *type)
 				     Type::getInt32Ty(ctx), /* type */
 				     type,                  /* addr */
 				     Type::getInt64Ty(ctx), /* size_t */
-				     Type::getInt32Ty(ctx)); /* num_insts */
+				     Type::getInt32Ty(ctx)  /* num_insts */
+#if __clang_major__ <= 4
+				     , NULL);
+#else
+                                     );
+#endif
   
   return func;
 }
