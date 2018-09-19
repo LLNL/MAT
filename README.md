@@ -6,7 +6,8 @@ This tool traces all memory accesses to stack(Static allocation)/heap(Dynamic al
 
 ## Dependencies
 
-* GOTCHA (https://github.com/LLNL/GOTCHA)
+* GOTCHA (https://github.com/LLNL/GOTCHA) v1.0.2
+* clang v4.0.0
 
 ## Quick Start ##
 

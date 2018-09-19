@@ -4,7 +4,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <mpi.h>
 
 int mat_io_open(const char* path, int flags, ...);
 ssize_t mat_io_write(int fd, const char* buf, size_t size);

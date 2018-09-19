@@ -7,8 +7,6 @@
 #include <string.h>
 #include <errno.h>
 
-#include <mpi.h>
-
 #include "mat_util.h"
 
 #define MAT_IO_RETRIES (10)

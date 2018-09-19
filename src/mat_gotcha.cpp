@@ -12,7 +12,7 @@
 #define MAT_WRAPPEE_(prefix, func) prefix ## _ ## func
 #define MAT_WRAPPEE(func) MAT_WRAPPEE_(wrappee, func)
 
-#define MAT_BINDING(name) { #name, (void*)(MAT_WRAPPER(name)), &MAT_WRAPPEE_HANDLER(name), NULL}
+#define MAT_BINDING(name) { #name, (void*)(MAT_WRAPPER(name)), &MAT_WRAPPEE_HANDLER(name)}
 
 #define MAT_USER_CODE_BEGIN	       \
   do {				       \
