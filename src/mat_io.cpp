@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
+#include <stdarg.h>
 
 #include "mat_util.h"
 
