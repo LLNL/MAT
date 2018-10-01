@@ -5,7 +5,6 @@
 #include <sys/stat.h> 
 #include <fcntl.h>
 #include <omp.h>
-#include <mpi.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <sys/types.h>

@@ -4,8 +4,7 @@ SRCDIR =../src
 AM_CXXFLAGS = -g -rdynamic -fopenmp -I../src/
 AM_CFLAGS = -g -rdynamic -fopenmp -I../src/
 AM_CPPFLAGS = -I$(libgotcha_INCLUDE) -I../src/
-AM_LDFLAGS = -L$(libgotcha_LDFLAGS) -L../src/.libs/
-AM_LIBADD  = -lgotcha
+AM_LDFLAGS = -L$(libgotcha_LDFLAGS) -L../src/.libs/ -lgotcha
 
 noinst_PROGRAMS = \
 	mat_test_simple \

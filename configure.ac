@@ -25,50 +25,40 @@ AC_SUBST([LIB_AGE], [0])
 
 
 #### Checks for programs.
-AC_LANG_PUSH(C)
-LX_FIND_MPI
-test "x$have_C_mpi" = xyes || AC_MSG_ERROR([Failed to find C MPI Wrapper.])
-AC_LANG_POP()
-AC_LANG_PUSH(C++)
-LX_FIND_MPI
-test "x$have_CXX_mpi" = xyes || AC_MSG_ERROR([Failed to find C++ MPI Wrapper.])
-AC_LANG_POP()
-AC_LANG_PUSH(Fortran)
-LX_FIND_MPI
-test "x$have_F_mpi" = xyes || AC_MSG_ERROR([Failed to find Fortran MPI Wrapper.])
-AC_LANG_POP()
+#AC_LANG_PUSH(C)
+#LX_FIND_MPI
+#test "x$have_C_mpi" = xyes || AC_MSG_ERROR([Failed to find C MPI Wrapper.])
+#AC_LANG_POP()
+#AC_LANG_PUSH(C++)
+#LX_FIND_MPI
+#test "x$have_CXX_mpi" = xyes || AC_MSG_ERROR([Failed to find C++ MPI Wrapper.])
+#AC_LANG_POP()
+#AC_LANG_PUSH(Fortran)
+#LX_FIND_MPI
+#test "x$have_F_mpi" = xyes || AC_MSG_ERROR([Failed to find Fortran MPI Wrapper.])
+#AC_LANG_POP()
 
-CC="$MPICC"
-CXX="$MPICXX"
-FC="$MPIFC"
+AC_PROG_CC
+AC_CHECK_PROGS([CLANG_CC], [clang], [:])
+if test "$CC" = :; then
+   AC_MSG_ERROR([No such command: clang. This package needs clang.])
+fi
+
+AC_PROG_CXX
+AC_CHECK_PROGS([CLANG_CXX], [clang++], [:])
+if test "$CXX" = :; then
+   AC_MSG_ERROR([No such command: clang++. This package needs clang++.])
+fi
+
+CC="$CLANG_CC"
+CXX="$CLANG_CXX"
+
 AC_CHECK_PROGS([MAKE], [make], [:])
 if test "$MAKE" = :; then
    AC_MSG_ERROR([This package needs make.])
 fi
 AC_PROG_LIBTOOL
 
-
-
-#### Checks for libraries.
-#####zlib
-
-AC_ARG_WITH([zlib-static],
-            [AS_HELP_STRING([--with-zlib-static],
-              [path to installation directory for libz])],
-            [libz_DIR=$withval],
-            [libz_DIR=""])
-
-check_zlib="yes"
-if test "$libz_DIR" = ""; then
-   AC_CHECK_LIB([z], [deflate], [], [check_zlib="no"])
-   AC_CHECK_LIB([z], [inflate], [], [check_zlib="no"])
-if test "$check_zlib" = "no"; then
-   AC_MSG_ERROR([This package needs zlib.])
-fi		    
-else
-   AC_SUBST([libz_a_INCLUDE], [$libz_DIR/include/])
-   AC_SUBST([libz_a_LIB], [$libz_DIR/lib/libz.a])
-fi
 
 ##### GOTCHA
 AC_ARG_WITH([gotcha],
@@ -88,25 +78,7 @@ else
    AC_SUBST([libgotcha_LDFLAGS], [$libgotcha_DIR/lib64/])
 fi
 
-
-#AC_CHECK_LIB([mpi], [MPI_Init])
-mpi_version3="yes"
-if test "$enable_cdc" = yes; then
-if test "$with_bluegene" = ""; then
-AC_CHECK_LIB([mpi], [MPI_Get, PMPI_Get, MPI_Win_lock_all, PMPI_Win_lock_all, MPI_Win_unlock_all, PMPI_Win_unlock_all, MPI_Win_allocate, PMPI_Win_allocate, MPI_Win_free, PMPI_Win_free, MPI_Win_flush_local_all, PMPI_Win_flush_local_all], [], [mpi_version3="no"])
-
-if test "$mpi_version3" = "no"; then
-   AC_MSG_ERROR([This package needs MPI3.])
-fi		    
-fi		    
-fi
-
 #### Checks for header files.
-
-if test "$libz_DIR" = :; then
-   AC_CHECK_HEADERS([zlib.h])
-fi
-
 if test "$libgotcha_DIR" = :; then
    AC_CHECK_HEADERS([gotcha/gotcha.h])
 fi
