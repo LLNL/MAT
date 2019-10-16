@@ -1,3 +1,8 @@
+// Copyright 2019 Lawrence Livermore National Security, LLC
+// See the top-level LICENSE file for details.
+//
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+
 #ifndef MAT_IO_H_
 #define MAT_IO_H_
 
