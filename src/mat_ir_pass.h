@@ -9,6 +9,7 @@
 #include <llvm/IR/Function.h>
 
 #include <list>
+#include <string>
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
@@ -79,7 +80,7 @@ class MATFunc: public MAT, public FunctionPass
   virtual void getAnalysisUsage(AnalysisUsage &AU) const;
   
  private:
-  char* data_dependency_dir;
+  std::string data_dependency_dir;
   unordered_map<size_t, vector<size_t>*> *data_dependency_umap;
   
   int instrument_init_and_finalize(Function &F);

@@ -44,6 +44,7 @@ int MAT::location_id = 0;
 int MAT::file_local_id = 0;
 int MAT::path_name_id = 0;
 int MAT::instruction_id = 1;
+std::unordered_map<string, size_t> MAT::file2hash_umap;
 
 void MAT::init_instrumented_functions(Module *M)
 {
@@ -389,10 +390,10 @@ bool MATFunc::doFinalization(Module &M)
   char path[PATH_MAX];
   
   /* Dump dependency files*/
-  if (0 != (status = mkdir(data_dependency_dir, S_IRWXU))) {
+  if (0 != (status = mkdir(data_dependency_dir.c_str(), S_IRWXU))) {
     //    MAT_ERR("Failed to create directory: %s", data_dependency_dir);
   }
-  sprintf(path, "%s/%s.mdep", data_dependency_dir, file_name_c);
+  sprintf(path, "%s/%s.mdep", data_dependency_dir.c_str(), file_name_c);
   fd = mat_io_fopen(path, "wb");
   for (pair<size_t, vector<size_t>*> e: *data_dependency_umap) {
     mat_io_fwrite(&e.first, sizeof(size_t), 1, fd);
