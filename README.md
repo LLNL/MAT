@@ -7,7 +7,6 @@ This tool traces all memory accesses to stack(Static allocation)/heap(Dynamic al
 ## Dependencies
 
 * GOTCHA (https://github.com/LLNL/GOTCHA)
-  * v1.x.x
 * clang/LLVM
   * v4.0.0 or later
 
@@ -41,7 +40,11 @@ This tool traces all memory accesses to stack(Static allocation)/heap(Dynamic al
 	<id> <accessed address> <offset> <head address> <is_read> <accessed size in bytes> <allocated size for the buffer> <thread id>
 
 
-### Contact ###
+### Contact
 
 * Kento Sato (kento@llnl.gov)
 * David Boehme (boehme3@llnl.gov)
+
+### Release
+
+LLNL-CODE-805662
