@@ -45,6 +45,10 @@ This tool traces all memory accesses to stack(Static allocation)/heap(Dynamic al
 * Kento Sato (kento@llnl.gov)
 * David Boehme (boehme3@llnl.gov)
 
-### Release
+### License
+
+MAT is distributed under the terms of the Apache-2.0 license. See LICENSE and NOTICE for details.
+
+SPDX-License-Identifier: Apache-2.0
 
 LLNL-CODE-805662
